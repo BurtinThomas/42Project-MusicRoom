@@ -1,0 +1,1 @@
+{"valid_import":true,"imports":[{"uri":"package:musicroom_mobile/core/models/event.dart","transitive":true},{"uri":"package:musicroom_mobile/core/models/event.dart","transitive":false},{"uri":"package:musicroom_mobile/core/models/track.dart","transitive":false}],"elements":[]}

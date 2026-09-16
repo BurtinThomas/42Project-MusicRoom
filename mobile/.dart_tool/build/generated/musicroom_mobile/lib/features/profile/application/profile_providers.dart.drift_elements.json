@@ -1,0 +1,1 @@
+{"valid_import":true,"imports":[{"uri":"package:flutter_riverpod/flutter_riverpod.dart","transitive":false},{"uri":"package:musicroom_mobile/core/models/user_profile.dart","transitive":false},{"uri":"package:musicroom_mobile/core/providers.dart","transitive":false},{"uri":"package:musicroom_mobile/features/profile/data/profile_repository.dart","transitive":false}],"elements":[]}
