@@ -1,7 +1,9 @@
+AVD_NAME ?= Pixel_6
+
 .PHONY: help install backend-install mobile-install \
         db-up db-down db-reset prisma-generate prisma-migrate \
         backend-dev backend-build backend-lint \
-        mobile-run mobile-web mobile-build-web \
+        mobile-emulator mobile-web mobile-android \
         load-test seed-load-test env
 
 help:
@@ -14,9 +16,9 @@ help:
 	@echo "  make backend-dev      Run the NestJS API in watch mode"
 	@echo "  make backend-build    Build the backend for production"
 	@echo "  make backend-lint     Lint the backend"
-	@echo "  make mobile-run       Run the Flutter app (flutter run — pick a device)"
+	@echo "  make mobile-emulator  Boot the Android emulator (AVD_NAME, default Pixel_6)"
 	@echo "  make mobile-web       Run the Flutter app in Chrome on a fixed port (matches CORS_ORIGINS)"
-	@echo "  make mobile-build-web Build the Flutter web release bundle"
+	@echo "  make mobile-android   Run the Flutter app on the running Android emulator"
 	@echo "  make seed-load-test   Seed accounts/event/playlist for a k6 run"
 	@echo "  make load-test        Run the k6 load-testing scenario"
 
@@ -56,14 +58,15 @@ backend-build:
 backend-lint:
 	cd backend && npm run lint
 
-mobile-run:
-	cd mobile && flutter run
+mobile-emulator:
+	rm -f ~/.android/avd/$(AVD_NAME).avd/*.lock
+	cd ~/Android/Sdk/emulator && ./emulator -avd $(AVD_NAME) &
 
 mobile-web:
 	cd mobile && flutter run -d chrome --web-port=8080
 
-mobile-build-web:
-	cd mobile && flutter build web
+mobile-android:
+	cd mobile && flutter run -d emulator-5554
 
 seed-load-test:
 	cd backend && npx ts-node scripts/seed-load-test.ts

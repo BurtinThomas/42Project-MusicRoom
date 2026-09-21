@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,7 +14,17 @@ class EventsListScreen extends ConsumerWidget {
     final eventsAsync = ref.watch(eventsListProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Music Track Vote — Events')),
+      appBar: AppBar(
+        title: const Text('Music Track Vote — Events'),
+        actions: [
+          if (!kIsWeb)
+            IconButton(
+              tooltip: 'Nearby events (beacon scan)',
+              icon: const Icon(Icons.sensors),
+              onPressed: () => context.push('/home/nearby'),
+            ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/home/create'),
         child: const Icon(Icons.add),

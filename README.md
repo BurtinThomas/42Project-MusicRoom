@@ -44,10 +44,26 @@ make backend-dev                               # http://localhost:3000 — Swagg
 ```bash
 make mobile-install    # flutter pub get
 cd mobile && dart run build_runner build --delete-conflicting-outputs   # generates local_db_native.g.dart
-make mobile-run         # flutter run — pick a device/simulator when prompted
+make mobile-web         # runs in Chrome — see "Running on an Android emulator" below for Android
 ```
 
 Once the app is open, go to **Settings → Backend URL** and confirm/set it to your backend's address (defaults to `http://localhost:3000`; the subject requires this to be configurable rather than hardcoded).
+
+**Running on an Android emulator from the command line** (equivalent to pressing ▶️ Run in Android Studio):
+
+```bash
+make mobile-emulator                         # clears stale locks, boots the AVD (default Pixel_6;
+                                              # override with AVD_NAME=<name> if yours is different)
+
+flutter devices                              # confirm it shows up as "emulator-5554" (or similar)
+make mobile-android                          # builds, installs, and launches the app on it
+                                              # (targets "emulator-5554" — if flutter devices showed a
+                                              # different id, run `cd mobile && flutter run -d <that id>` instead)
+```
+
+The emulator keeps the app installed across reboots, so after the first `flutter run` you can also just tap the app icon on the virtual phone's home screen — that skips the rebuild but won't pick up new code changes (run `flutter run` again for that).
+
+If the emulator reports "the emulator process has terminated" or refuses to start a second time, it's almost always a leftover lock file from an unclean shutdown — the `rm -f ... *.lock` line above fixes it; run it again before the next launch.
 
 **Testing in a browser** (`flutter run -d chrome`): the backend's CORS only allows the origins listed in `backend/.env`'s `CORS_ORIGINS` (`http://localhost:5173,http://localhost:8080` by default), but Flutter picks a random port each run unless you pin one. Run `flutter run -d chrome --web-port=8080` (or add whatever port you use to `CORS_ORIGINS`) — otherwise requests fail with a CORS/XMLHttpRequest error in the browser console.
 
@@ -78,7 +94,7 @@ All Makefile targets: `make help`.
 
 ## Bonus part
 
-- **Multi-platform support**: the same Flutter codebase also builds for the web (`make mobile-build-web`), with a responsive layout (bottom nav on phones, side rail on wide screens).
+- **Multi-platform support**: the same Flutter codebase also runs on the web (`make mobile-web`), with a responsive layout (bottom nav on phones, side rail on wide screens).
 - **Reflection on the IoT**: an event owner can attach an iBeacon region to their event; the mobile app resolves nearby beacons to event info via `POST /beacons/scan` (`backend/src/beacons`, `mobile/lib/features/beacons`).
 - **Free vs. Paid subscription**: users switch between FREE and PAID plans; collaborative (public / open-edit) playlists require PAID (`backend/src/playlists/playlists.service.ts`).
 - **Offline Mode**: the mobile app caches a snapshot of the user's events/playlists locally and queues actions performed offline; `POST /sync/replay` replays them once connectivity returns, with explicit conflict/error reporting per action (`backend/src/sync`, `mobile/lib/features/offline`).
