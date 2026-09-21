@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -35,9 +36,13 @@ class AuthController extends StateNotifier<AuthState> {
   static const _googleServerClientId =
       '949617302313-gi9gdc533ti8st2tatakookeeujou0k8.apps.googleusercontent.com';
 
+  // google_sign_in_web asserts that serverClientId is null (it's not
+  // supported on web); passing it there permanently breaks the plugin's
+  // init. The web client ID is auto-detected from the
+  // google-signin-client_id meta tag in web/index.html instead.
   final GoogleSignIn googleSignIn = GoogleSignIn(
     scopes: const ['email'],
-    serverClientId: _googleServerClientId,
+    serverClientId: kIsWeb ? null : _googleServerClientId,
   );
 
   Future<void> _bootstrap() async {
