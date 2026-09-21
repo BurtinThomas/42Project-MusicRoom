@@ -51,12 +51,12 @@ Once the app is open, go to **Settings → Backend URL** and confirm/set it to y
 
 **Testing in a browser** (`flutter run -d chrome`): the backend's CORS only allows the origins listed in `backend/.env`'s `CORS_ORIGINS` (`http://localhost:5173,http://localhost:8080` by default), but Flutter picks a random port each run unless you pin one. Run `flutter run -d chrome --web-port=8080` (or add whatever port you use to `CORS_ORIGINS`) — otherwise requests fail with a CORS/XMLHttpRequest error in the browser console.
 
-**Testing registration without a real mailbox**: with `MAIL_DEV_MODE=true` (the `.env.example` default), the email-verification and password-reset codes aren't actually emailed — they're printed to the backend terminal, e.g.:
+**Registration and no real mailbox**: `MailService` never sends real email — the email-verification and password-reset codes are printed to the backend terminal instead, e.g.:
 ```
 [MailService] [DEV MAIL] to=you@example.com subject="Verify your Music Room account"
 ...code: 52b6ba443c5875e6c38d91d7ec2071fa2c508d84c03ef2c1
 ```
-Copy that code into the app's verification screen. Set `MAIL_DEV_MODE=false` and fill in real `MAIL_*` credentials to send actual emails.
+Copy that code into the app's verification screen. This is a deliberate choice, not a placeholder: the subject only requires that email verification/reset exist and work, not that a real mailbox is wired up, so there's no SMTP dependency to configure or fail during evaluation.
 
 All Makefile targets: `make help`.
 

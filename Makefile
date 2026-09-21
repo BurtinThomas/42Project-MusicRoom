@@ -1,7 +1,7 @@
 .PHONY: help install backend-install mobile-install \
         db-up db-down db-reset prisma-generate prisma-migrate \
         backend-dev backend-build backend-lint \
-        mobile-run mobile-build-web \
+        mobile-run mobile-web mobile-build-web \
         load-test seed-load-test env
 
 help:
@@ -14,7 +14,8 @@ help:
 	@echo "  make backend-dev      Run the NestJS API in watch mode"
 	@echo "  make backend-build    Build the backend for production"
 	@echo "  make backend-lint     Lint the backend"
-	@echo "  make mobile-run       Run the Flutter app (flutter run)"
+	@echo "  make mobile-run       Run the Flutter app (flutter run — pick a device)"
+	@echo "  make mobile-web       Run the Flutter app in Chrome on a fixed port (matches CORS_ORIGINS)"
 	@echo "  make mobile-build-web Build the Flutter web release bundle"
 	@echo "  make seed-load-test   Seed accounts/event/playlist for a k6 run"
 	@echo "  make load-test        Run the k6 load-testing scenario"
@@ -57,6 +58,9 @@ backend-lint:
 
 mobile-run:
 	cd mobile && flutter run
+
+mobile-web:
+	cd mobile && flutter run -d chrome --web-port=8080
 
 mobile-build-web:
 	cd mobile && flutter build web

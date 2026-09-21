@@ -32,6 +32,14 @@ class AuthController extends StateNotifier<AuthState> {
   final Ref _ref;
   AuthRepository get _repo => _ref.read(authRepositoryProvider);
 
+  static const _googleServerClientId =
+      '949617302313-gi9gdc533ti8st2tatakookeeujou0k8.apps.googleusercontent.com';
+
+  final GoogleSignIn googleSignIn = GoogleSignIn(
+    scopes: const ['email'],
+    serverClientId: _googleServerClientId,
+  );
+
   Future<void> _bootstrap() async {
     final token = await TokenStorage.instance.accessToken;
     state = state.copyWith(
@@ -55,9 +63,12 @@ class AuthController extends StateNotifier<AuthState> {
   }
 
   Future<void> loginWithGoogle() async {
-    final googleSignIn = GoogleSignIn(scopes: const ['email']);
     final account = await googleSignIn.signIn();
     if (account == null) return;
+    await loginWithGoogleAccount(account);
+  }
+
+  Future<void> loginWithGoogleAccount(GoogleSignInAccount account) async {
     final auth = await account.authentication;
     final idToken = auth.idToken;
     if (idToken == null) {

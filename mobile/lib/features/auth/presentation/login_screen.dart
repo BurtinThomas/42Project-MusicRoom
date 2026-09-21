@@ -1,9 +1,14 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../application/auth_controller.dart';
 import '../data/auth_repository.dart';
+import 'google_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -18,6 +23,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _password = TextEditingController();
   bool _loading = false;
   String? _error;
+  StreamSubscription<GoogleSignInAccount?>? _googleAccountSub;
+
+  @override
+  void initState() {
+    super.initState();
+    if (kIsWeb) {
+      _googleAccountSub = ref
+          .read(authControllerProvider.notifier)
+          .googleSignIn
+          .onCurrentUserChanged
+          .listen((account) {
+        if (account != null) {
+          _social(() => ref
+              .read(authControllerProvider.notifier)
+              .loginWithGoogleAccount(account));
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _googleAccountSub?.cancel();
+    super.dispose();
+  }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -121,15 +151,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Expanded(child: Divider()),
                     ]),
                     const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      onPressed: _loading
-                          ? null
-                          : () => _social(() => ref
-                              .read(authControllerProvider.notifier)
-                              .loginWithGoogle()),
-                      icon: const Icon(Icons.login),
-                      label: const Text('Continue with Google'),
-                    ),
+                    kIsWeb
+                        ? googleSignInButton()
+                        : OutlinedButton.icon(
+                            onPressed: _loading
+                                ? null
+                                : () => _social(() => ref
+                                    .read(authControllerProvider.notifier)
+                                    .loginWithGoogle()),
+                            icon: const Icon(Icons.login),
+                            label: const Text('Continue with Google'),
+                          ),
                     const SizedBox(height: 24),
                     TextButton(
                       onPressed: () => context.push('/register'),

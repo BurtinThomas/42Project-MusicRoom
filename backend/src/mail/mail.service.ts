@@ -1,37 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private transporter: nodemailer.Transporter | null = null;
-  private readonly devMode: boolean;
-  private readonly from: string;
-
-  constructor(private readonly config: ConfigService) {
-    this.devMode = this.config.get<boolean>('mail.devMode') ?? true;
-    this.from = this.config.get<string>('mail.from')!;
-
-    if (!this.devMode) {
-      this.transporter = nodemailer.createTransport({
-        host: this.config.get<string>('mail.host'),
-        port: this.config.get<number>('mail.port'),
-        auth: {
-          user: this.config.get<string>('mail.user'),
-          pass: this.config.get<string>('mail.password'),
-        },
-      });
-    }
-  }
 
   async send(to: string, subject: string, text: string): Promise<void> {
-    if (this.devMode || !this.transporter) {
-      this.logger.log(`[DEV MAIL] to=${to} subject="${subject}"\n${text}`);
-      return;
-    }
-
-    await this.transporter.sendMail({ from: this.from, to, subject, text });
+    this.logger.log(`[DEV MAIL] to=${to} subject="${subject}"\n${text}`);
   }
 
   async sendVerificationEmail(
