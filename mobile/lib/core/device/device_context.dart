@@ -45,10 +45,6 @@ class DeviceContext {
       platform = 'ANDROID';
       final android = await deviceInfo.androidInfo;
       model = '${android.manufacturer} ${android.model}';
-    } else if (Platform.isIOS) {
-      platform = 'IOS';
-      final ios = await deviceInfo.iosInfo;
-      model = ios.utsname.machine;
     } else {
       platform = 'UNKNOWN';
       model = 'unknown';

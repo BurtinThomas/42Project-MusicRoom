@@ -6,7 +6,6 @@ import '../../../core/config/app_config.dart';
 import '../../../core/device/device_context.dart';
 import '../../../core/providers.dart';
 import '../../auth/application/auth_controller.dart';
-import '../../delegations/application/delegations_providers.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -79,7 +78,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   FilledButton.tonal(
                     onPressed: () async {
                       await _registerDevice(ref, device);
-                      ref.invalidate(myDevicesProvider);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Device registered')));

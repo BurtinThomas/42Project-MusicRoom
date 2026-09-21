@@ -36,12 +36,10 @@ enum FriendshipStatus {
 enum AuthProvider {
   LOCAL
   GOOGLE
-  FACEBOOK
 }
 
 enum ActionLogPlatform {
   ANDROID
-  IOS
   WEB
   UNKNOWN
 }
@@ -79,8 +77,6 @@ model User {
   friendshipsTo              Friendship[]        @relation("FriendshipAddressee")
   refreshTokens              RefreshToken[]
   eventTracksAdded           EventTrack[]        @relation("EventTrackAddedBy")
-  controlDelegationsGranted  ControlDelegation[] @relation("DelegationOwner")
-  controlDelegationsReceived ControlDelegation[] @relation("DelegationDelegate")
 }
 
 model SocialIdentity {
@@ -128,8 +124,7 @@ model Device {
   createdAt      DateTime          @default(now())
   lastSeenAt     DateTime          @updatedAt
 
-  actionLogs               ActionLog[]
-  delegationsAsOwnerDevice ControlDelegation[]
+  actionLogs ActionLog[]
 
   @@unique([userId, installationId])
 }
@@ -273,18 +268,4 @@ model PlaylistTrack {
   createdAt  DateTime @default(now())
 
   @@index([playlistId, position])
-}
-
-model ControlDelegation {
-  id         String    @id @default(uuid())
-  owner      User      @relation("DelegationOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  ownerId    String
-  device     Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
-  deviceId   String
-  delegate   User      @relation("DelegationDelegate", fields: [delegateId], references: [id], onDelete: Cascade)
-  delegateId String
-  grantedAt  DateTime  @default(now())
-  revokedAt  DateTime?
-
-  @@index([deviceId])
 }

@@ -1,4 +1,3 @@
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -65,17 +64,6 @@ class AuthController extends StateNotifier<AuthState> {
       throw AuthException('Google did not return an identity token.');
     }
     await _repo.loginWithGoogle(idToken);
-    state = state.copyWith(status: AuthStatus.authenticated);
-  }
-
-  Future<void> loginWithFacebook() async {
-    final result = await FacebookAuth.instance
-        .login(permissions: const ['email', 'public_profile']);
-    if (result.status != LoginStatus.success || result.accessToken == null) {
-      if (result.status == LoginStatus.cancelled) return;
-      throw AuthException(result.message ?? 'Facebook login failed.');
-    }
-    await _repo.loginWithFacebook(result.accessToken!.tokenString);
     state = state.copyWith(status: AuthStatus.authenticated);
   }
 

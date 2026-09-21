@@ -11,7 +11,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { GoogleLoginDto, FacebookLoginDto } from './dto/social-login.dto';
+import { GoogleLoginDto } from './dto/social-login.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 
 const AUTH_THROTTLE_LIMIT = Number(process.env.THROTTLE_AUTH_LIMIT) || 5;
@@ -69,14 +69,6 @@ export class AuthController {
     return this.authService.issueTokens(user);
   }
 
-  @Public()
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  @Post('facebook')
-  async loginFacebook(@Body() dto: FacebookLoginDto) {
-    const user = await this.authService.loginWithFacebook(dto.accessToken);
-    return this.authService.issueTokens(user);
-  }
-
   @ApiBearerAuth()
   @Post('link/google')
   linkGoogle(
@@ -84,15 +76,6 @@ export class AuthController {
     @Body() dto: GoogleLoginDto,
   ) {
     return this.authService.linkGoogle(user.id, dto.idToken);
-  }
-
-  @ApiBearerAuth()
-  @Post('link/facebook')
-  linkFacebook(
-    @CurrentUser() user: AuthenticatedUser,
-    @Body() dto: FacebookLoginDto,
-  ) {
-    return this.authService.linkFacebook(user.id, dto.accessToken);
   }
 
   @Public()

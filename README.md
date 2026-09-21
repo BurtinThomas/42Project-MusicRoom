@@ -1,12 +1,12 @@
 # Music Room
 
-Music, Collaboration and mobility — a mobile + backend solution for live collaborative music: **Music Track Vote**, **Music Control Delegation**, and **Music Playlist Editor**.
+Music, Collaboration and mobility — a mobile + backend solution for live collaborative music: **Music Track Vote** and **Music Playlist Editor** (the subject requires 2 of its 3 services; Music Control Delegation was left out — see below).
 
 ## Repository layout
 
 ```
 backend/   NestJS (TypeScript) REST + WebSocket API — single source of truth
-mobile/    Flutter app (Android / iOS / Web) — a "remote control" for the API
+mobile/    Flutter app (Android / Web) — a "remote control" for the API
 ```
 
 ## Stack and why
@@ -15,11 +15,11 @@ mobile/    Flutter app (Android / iOS / Web) — a "remote control" for the API
 |---|---|---|
 | Backend framework | **NestJS** (Node.js/TypeScript) | Decorator-based modules, guards, interceptors map directly onto cross-cutting needs: `@nestjs/swagger` self-documents the API, guards enforce per-user data isolation, an interceptor logs every action, `@nestjs/throttler` rate-limits auth routes, `@nestjs/websockets` gives realtime rooms for the two collaborative services. |
 | Database | **PostgreSQL** via Prisma ORM | The two "competition" services (Track Vote, Playlist Editor) need real ACID transactions and DB-level unique constraints to correctly resolve concurrent writes — safer than pushing that correctness burden into application code. |
-| API style | **REST + JSON** | Maps cleanly onto resources (users, events, tracks, votes, playlists, devices, delegations); no schema compiler needed, first-class support in both NestJS and Flutter. Complemented by a thin WebSocket channel (Socket.IO) for realtime notifications — REST stays the only place a write is durably committed. |
-| Mobile | **Flutter** | Subject requires Android or iOS; the multi-platform bonus asks for responsive web too. Flutter renders the same codebase on Android, iOS *and* web from one Dart tree, avoiding a second client rewrite. |
+| API style | **REST + JSON** | Maps cleanly onto resources (users, events, tracks, votes, playlists, devices); no schema compiler needed, first-class support in both NestJS and Flutter. Complemented by a thin WebSocket channel (Socket.IO) for realtime notifications — REST stays the only place a write is durably committed. |
+| Mobile | **Flutter** | Subject requires Android or iOS; the multi-platform bonus asks for responsive web too. We picked Android as the mandatory mobile target, and Flutter renders the same codebase on Android *and* web from one Dart tree, avoiding a second client rewrite. |
 | Mobile state | **Riverpod** | Testable, no `BuildContext` coupling, works well with realtime streams and the offline sync layer. |
-| Local storage | **Drift (SQLite)** on Android/iOS/desktop, **SharedPreferences** on web | Drift needs `dart:ffi`, unavailable on Flutter Web without bundling a matching sqlite3 WASM binary — a separate native-artifact pipeline outside this project's scope. The web build keeps the same public `LocalDb` interface (`mobile/lib/core/storage/local_db.dart`, platform-selected via a `dart.library.io` conditional export) backed by `window.localStorage` instead, so it stays fully functional and still persists across reloads. |
-| Auth | JWT (access + rotating refresh) + Google/Passport + Facebook Graph API | Short-lived access token, hashed rotating refresh token limits the blast radius of a stolen token. Social tokens are cryptographically verified server-side (Google ID token verification, Facebook `debug_token` check) rather than trusted as-is. |
+| Local storage | **Drift (SQLite)** on Android/desktop, **SharedPreferences** on web | Drift needs `dart:ffi`, unavailable on Flutter Web without bundling a matching sqlite3 WASM binary — a separate native-artifact pipeline outside this project's scope. The web build keeps the same public `LocalDb` interface (`mobile/lib/core/storage/local_db.dart`, platform-selected via a `dart.library.io` conditional export) backed by `window.localStorage` instead, so it stays fully functional and still persists across reloads. |
+| Auth | JWT (access + rotating refresh) + Google/Passport | Short-lived access token, hashed rotating refresh token limits the blast radius of a stolen token. Social tokens are cryptographically verified server-side (Google ID token verification) rather than trusted as-is. |
 
 ## Getting started
 
@@ -64,17 +64,17 @@ All Makefile targets: `make help`.
 
 - **`flutter` fails with "Current Mac OS X version ... is lower than minimum supported version"**: the latest Flutter stable requires macOS 14+. On macOS 12/13, install Flutter 3.24.5 instead — download `flutter_macos_3.24.5-stable.zip` (or `flutter_macos_arm64_3.24.5-stable.zip` on Apple Silicon) from `storage.googleapis.com/flutter_infra_release/releases/stable/macos/`, unzip it (e.g. to `~/flutter`), and add `~/flutter/bin` to your `PATH`.
 - **No Docker installed**: skip `make db-up` and point `backend/.env`'s `DATABASE_URL` at any local Postgres (see step 1 above).
-- Google/Facebook sign-in need real OAuth credentials (see OAuth configuration below) — everything else, including registration/login by email+password, works without them.
+- Google sign-in needs real OAuth credentials (see OAuth configuration below) — everything else, including registration/login by email+password, works without them.
 
 ## Mandatory part
 
-- **User**: email/password with mandatory email verification and password reset, Google/Facebook sign-in, account linking, public/friends/private profile scopes, music preferences.
-- **Services**: all **three** are implemented — Music Track Vote, Music Control Delegation, Music Playlist Editor — each with visibility (public/private) and license management.
+- **User**: email/password with mandatory email verification and password reset, Google sign-in, account linking, public/friends/private profile scopes, music preferences.
+- **Services**: 2 of the 3 (the subject requires "at least 2 out of 3") — Music Track Vote and Music Playlist Editor — each with visibility (public/private) and license management. Music Control Delegation was left out: it's the only one of the three with no bonus depending on it (IoT hooks into events, subscriptions gate playlists, offline sync replays event/playlist actions only), so dropping it keeps the mandatory requirement met while cutting scope.
 - **Server / API**: PostgreSQL as the single source of truth; REST + JSON, self-documented via Swagger at `/docs`.
-- **Mobile application**: Flutter app, backend URL configurable from Settings, Google/Facebook auth.
+- **Mobile application**: Flutter app, backend URL configurable from Settings, Google auth.
 - **Securing**: see below.
 - **Ramp-up**: see Load testing below.
-- **Agility**: `make backend-lint` / `make backend-build` / `flutter analyze` keep the codebase in a checked state; `.env` is git-ignored.
+- **Agility**: `make backend-lint` / `make backend-build` / `flutter analyze` keep the codebase in a checked state; `.env` is git-ignored. Unit tests per layer (V.8): `cd backend && npm test` (Jest — vote licensing, duplicate-vote conflict, playback control, playlist paid-plan gate, version-conflict on reorder, login/email-verification) and `cd mobile && flutter test` (register form validation).
 
 ## Bonus part
 
@@ -97,7 +97,7 @@ The subject specifically flags "competition" problems (several users voting/reor
 - `@nestjs/throttler`: 5 req/min on `/auth/login` and `/auth/forgot-password`, 120 req/min globally, per client IP.
 - Every query is scoped to the authenticated user; ownership/visibility/license is re-checked server-side on every request, never trusted from the client.
 - Global `ValidationPipe({ whitelist, forbidNonWhitelisted, transform })` rejects payloads with unexpected fields or wrong types.
-- Google ID tokens are cryptographically verified; Facebook tokens are checked against the Graph API's `debug_token` endpoint.
+- Google ID tokens are cryptographically verified server-side rather than trusted as-is.
 - Every authenticated action is logged server-side with user id, device, platform, and app version (`ActionLog` — `backend/src/common/logging/action-log.interceptor.ts`).
 - All secrets live in `.env`, git-ignored; `.env.example` documents required keys with dummy values.
 - **Not implemented, acknowledged as further hardening for a real deployment**: CAPTCHA/IP-reputation on top of per-IP throttling (distributed brute force), device-bound refresh tokens with a "log out other sessions" action, TLS termination + certificate pinning in production, a secrets manager instead of a flat `.env` file, and per-route body-size/rate limits on suggestion-spam-prone endpoints.
@@ -125,13 +125,12 @@ Latency degrades between the two runs, but correctness never does — no lost vo
 ```
 backend/src/
   auth/          Registration, login, email verification, password reset,
-                 Google/Facebook token verification, JWT issuance/refresh
+                 Google token verification, JWT issuance/refresh
   users/         Profile (public/friends/private scopes), music preferences
   friendships/   Friend requests, used to gate the "friends" visibility scope
-  devices/       Per-device registration (installationId), used by delegation & logs
+  devices/       Per-device registration (installationId), used by action logs
   events/        Music Track Vote: events, tracks, votes, realtime gateway
   playlists/     Music Playlist Editor: playlists, tracks, reordering, realtime gateway
-  delegations/   Music Control Delegation: per-device control grants
   subscriptions/ Free vs. paid plan
   beacons/       iBeacon → event resolution
   sync/          Offline snapshot + action replay
@@ -146,8 +145,7 @@ mobile/lib/
     profile/       Public/friends/private profile editor
     events/        Music Track Vote UI + realtime updates
     playlists/     Music Playlist Editor UI (drag-to-reorder) + conflict handling
-    delegations/   Music Control Delegation UI
-    friends/       Friend requests (used by invites & delegation pickers)
+    friends/       Friend requests (used by event/playlist invites)
     subscriptions/ Free/paid plan switcher
     beacons/       iBeacon scanning
     offline/       Outbox replay + snapshot sync
@@ -157,7 +155,6 @@ mobile/lib/
 
 ## OAuth configuration (mobile)
 
-Google and Facebook sign-in need platform-specific configuration that is never committed to the repo:
+Google sign-in needs platform-specific configuration that is never committed to the repo:
 
-- **Google**: [developers.google.com/identity/sign-in](https://developers.google.com/identity/sign-in) — drop the resulting config into `mobile/android/app/google-services.json` / `mobile/ios/Runner/GoogleService-Info.plist` (both git-ignored).
-- **Facebook**: [developers.facebook.com/docs/facebook-login](https://developers.facebook.com/docs/facebook-login) — configure the Facebook App ID per platform per the `flutter_facebook_auth` package's setup docs.
+- **Google**: [developers.google.com/identity/sign-in](https://developers.google.com/identity/sign-in) — drop the resulting config into `mobile/android/app/google-services.json` (git-ignored).

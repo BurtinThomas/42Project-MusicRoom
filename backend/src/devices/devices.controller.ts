@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
@@ -10,11 +10,6 @@ import { RegisterDeviceDto } from './dto/register-device.dto';
 @Controller('devices')
 export class DevicesController {
   constructor(private readonly devicesService: DevicesService) {}
-
-  @Get()
-  list(@CurrentUser() user: AuthenticatedUser) {
-    return this.devicesService.listForUser(user.id);
-  }
 
   @Post()
   register(

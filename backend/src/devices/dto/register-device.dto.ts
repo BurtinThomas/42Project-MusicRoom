@@ -9,11 +9,11 @@ export class RegisterDeviceDto {
   @IsString()
   installationId!: string;
 
-  @ApiProperty({ enum: ['ANDROID', 'IOS', 'WEB'] })
-  @IsIn(['ANDROID', 'IOS', 'WEB'])
-  platform!: 'ANDROID' | 'IOS' | 'WEB';
+  @ApiProperty({ enum: ['ANDROID', 'WEB'] })
+  @IsIn(['ANDROID', 'WEB'])
+  platform!: 'ANDROID' | 'WEB';
 
-  @ApiProperty({ example: 'iPhone 6G' })
+  @ApiProperty({ example: 'Samsung Galaxy S24' })
   @IsString()
   model!: string;
 

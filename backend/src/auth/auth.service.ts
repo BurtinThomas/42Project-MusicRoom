@@ -9,7 +9,6 @@ import { AuthProvider, User } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { createHash } from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
-import axios from 'axios';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
@@ -129,38 +128,6 @@ export class AuthService {
     );
   }
 
-  async loginWithFacebook(accessToken: string): Promise<User> {
-    const appId = this.config.get<string>('facebook.appId');
-    const appSecret = this.config.get<string>('facebook.appSecret');
-
-    const debug = await axios.get('https://graph.facebook.com/debug_token', {
-      params: {
-        input_token: accessToken,
-        access_token: `${appId}|${appSecret}`,
-      },
-    });
-    if (!debug.data?.data?.is_valid || debug.data.data.app_id !== appId) {
-      throw new UnauthorizedException('Invalid Facebook token');
-    }
-
-    const profile = await axios.get('https://graph.facebook.com/me', {
-      params: { fields: 'id,name,email', access_token: accessToken },
-    });
-    const { id: providerId, name, email } = profile.data;
-    if (!email) {
-      throw new UnauthorizedException(
-        'Your Facebook account has no email associated; email permission is required',
-      );
-    }
-
-    return this.users.findOrCreateFromSocial(
-      AuthProvider.FACEBOOK,
-      providerId,
-      email,
-      name,
-    );
-  }
-
   async linkGoogle(userId: string, idToken: string) {
     const ticket = await this.googleClient.verifyIdToken({
       idToken,
@@ -172,17 +139,6 @@ export class AuthService {
       userId,
       AuthProvider.GOOGLE,
       payload.sub,
-    );
-  }
-
-  async linkFacebook(userId: string, accessToken: string) {
-    const profile = await axios.get('https://graph.facebook.com/me', {
-      params: { fields: 'id', access_token: accessToken },
-    });
-    return this.users.linkSocialIdentity(
-      userId,
-      AuthProvider.FACEBOOK,
-      profile.data.id,
     );
   }
 

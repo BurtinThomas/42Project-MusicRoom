@@ -1,1 +1,0 @@
-{"valid_import":true,"imports":[{"uri":"package:flutter/material.dart","transitive":false},{"uri":"package:flutter_riverpod/flutter_riverpod.dart","transitive":false},{"uri":"package:musicroom_mobile/core/providers.dart","transitive":false},{"uri":"package:musicroom_mobile/features/subscriptions/data/subscriptions_repository.dart","transitive":false}],"elements":[]}

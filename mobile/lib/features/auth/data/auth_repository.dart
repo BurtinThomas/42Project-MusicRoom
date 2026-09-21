@@ -57,28 +57,9 @@ class AuthRepository {
     }
   }
 
-  Future<void> loginWithFacebook(String accessToken) async {
-    try {
-      final response = await _api.raw
-          .post('/auth/facebook', data: {'accessToken': accessToken});
-      await _saveTokens(response.data);
-    } on DioException catch (e) {
-      throw _mapError(e);
-    }
-  }
-
   Future<void> linkGoogle(String idToken) async {
     try {
       await _api.raw.post('/auth/link/google', data: {'idToken': idToken});
-    } on DioException catch (e) {
-      throw _mapError(e);
-    }
-  }
-
-  Future<void> linkFacebook(String accessToken) async {
-    try {
-      await _api.raw
-          .post('/auth/link/facebook', data: {'accessToken': accessToken});
     } on DioException catch (e) {
       throw _mapError(e);
     }

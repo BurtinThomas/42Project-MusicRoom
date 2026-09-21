@@ -8,12 +8,3 @@ export class GoogleLoginDto {
   @IsString()
   idToken!: string;
 }
-
-export class FacebookLoginDto {
-  @ApiProperty({
-    description:
-      'Access token returned by the Facebook Login SDK on the device',
-  })
-  @IsString()
-  accessToken!: string;
-}

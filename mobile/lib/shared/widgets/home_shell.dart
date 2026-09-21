@@ -16,11 +16,6 @@ class HomeShell extends StatelessWidget {
       selected: Icons.queue_music,
       label: 'Playlists'
     ),
-    (
-      icon: Icons.devices_outlined,
-      selected: Icons.devices,
-      label: 'Delegation'
-    ),
     (icon: Icons.people_outline, selected: Icons.people, label: 'Friends'),
     (
       icon: Icons.settings_outlined,

@@ -25,11 +25,4 @@ export class DevicesService {
       },
     });
   }
-
-  listForUser(userId: string) {
-    return this.prisma.device.findMany({
-      where: { userId },
-      orderBy: { lastSeenAt: 'desc' },
-    });
-  }
 }

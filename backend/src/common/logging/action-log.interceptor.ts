@@ -18,10 +18,6 @@ export class ActionLogInterceptor implements NestInterceptor {
     const method = request.method;
     const route = request.route?.path ?? request.url;
 
-    if (method === 'GET' && route?.startsWith('/health')) {
-      return next.handle();
-    }
-
     return next.handle().pipe(
       tap({
         next: () => this.record(request, method, route, 'success'),
@@ -36,9 +32,7 @@ export class ActionLogInterceptor implements NestInterceptor {
     const rawPlatform = String(
       headers['x-client-platform'] ?? '',
     ).toUpperCase();
-    const platform: ClientPlatform = ['ANDROID', 'IOS', 'WEB'].includes(
-      rawPlatform,
-    )
+    const platform: ClientPlatform = ['ANDROID', 'WEB'].includes(rawPlatform)
       ? (rawPlatform as ClientPlatform)
       : 'UNKNOWN';
     const appVersion = String(headers['x-client-app-version'] ?? 'unknown');

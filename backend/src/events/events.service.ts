@@ -9,7 +9,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Event, VoteLicense, Visibility } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { distanceMeters } from '../common/utils/geo';
-import { DelegationsService } from '../delegations/delegations.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { SuggestTrackDto } from './dto/suggest-track.dto';
 import { VoteDto } from './dto/vote.dto';
@@ -18,7 +17,6 @@ import { VoteDto } from './dto/vote.dto';
 export class EventsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly delegations: DelegationsService,
     private readonly events: EventEmitter2,
   ) {}
 
@@ -185,7 +183,7 @@ export class EventsService {
 
   async advance(userId: string, eventId: string) {
     const event = await this.getOrThrow(eventId);
-    await this.assertCanControl(event, userId);
+    this.assertCanControl(event, userId);
 
     const next = await this.prisma.eventTrack.findFirst({
       where: { eventId, playedAt: null },
@@ -204,13 +202,8 @@ export class EventsService {
     return updated;
   }
 
-  private async assertCanControl(event: Event, userId: string): Promise<void> {
-    if (event.ownerId === userId) return;
-    const isDelegate = await this.delegations.isDelegateForOwner(
-      event.ownerId,
-      userId,
-    );
-    if (!isDelegate)
+  private assertCanControl(event: Event, userId: string): void {
+    if (event.ownerId !== userId)
       throw new ForbiddenException(
         'You do not control playback for this event',
       );

@@ -130,16 +130,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       icon: const Icon(Icons.login),
                       label: const Text('Continue with Google'),
                     ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _loading
-                          ? null
-                          : () => _social(() => ref
-                              .read(authControllerProvider.notifier)
-                              .loginWithFacebook()),
-                      icon: const Icon(Icons.facebook),
-                      label: const Text('Continue with Facebook'),
-                    ),
                     const SizedBox(height: 24),
                     TextButton(
                       onPressed: () => context.push('/register'),

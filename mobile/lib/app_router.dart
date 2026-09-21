@@ -8,7 +8,6 @@ import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/register_screen.dart';
 import 'features/auth/presentation/reset_password_screen.dart';
 import 'features/auth/presentation/verify_email_screen.dart';
-import 'features/delegations/presentation/delegations_screen.dart';
 import 'features/events/presentation/create_event_screen.dart';
 import 'features/events/presentation/event_detail_screen.dart';
 import 'features/events/presentation/events_list_screen.dart';
@@ -89,11 +88,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ),
               ],
             ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-                path: '/delegations',
-                builder: (context, state) => const DelegationsScreen()),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(

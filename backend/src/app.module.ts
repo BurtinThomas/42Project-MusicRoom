@@ -13,11 +13,9 @@ import { FriendshipsModule } from './friendships/friendships.module';
 import { DevicesModule } from './devices/devices.module';
 import { EventsModule } from './events/events.module';
 import { PlaylistsModule } from './playlists/playlists.module';
-import { DelegationsModule } from './delegations/delegations.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { BeaconsModule } from './beacons/beacons.module';
 import { SyncModule } from './sync/sync.module';
-import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -40,11 +38,9 @@ import { HealthModule } from './health/health.module';
     DevicesModule,
     EventsModule,
     PlaylistsModule,
-    DelegationsModule,
     SubscriptionsModule,
     BeaconsModule,
     SyncModule,
-    HealthModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
