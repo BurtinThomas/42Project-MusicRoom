@@ -14,11 +14,6 @@
   - Sans ça, ces fonctionnalités vont planter sur un vrai device même si le
     reste de l'app tourne.
 
-- [ ] **Créer un vrai compte développeur Google** et remplir
-      `backend/.env` (`GOOGLE_CLIENT_ID`, etc.), puis tester une vraie
-      connexion sociale de bout en bout. Jamais testé — seul le flow
-      email/password a été vérifié en réel
-
 - [ ] **Cliquer manuellement dans l'app, au moins une fois, chaque parcours** —
       la logique backend a été testée via l'API, mais jamais l'écran
       correspondant :
