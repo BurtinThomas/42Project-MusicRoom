@@ -14,16 +14,15 @@ class ApiClient {
           'X-Client-Platform': device.platform,
           'X-Client-Device': device.model,
           'X-Client-App-Version': device.appVersion,
-          'X-Client-Installation-Id': device.installationId,
         });
-        if (!options.path.startsWith('/auth/')) {
+        if (!_isPublicAuthCall(options.path)) {
           final token = await TokenStorage.instance.accessToken;
           if (token != null) options.headers['Authorization'] = 'Bearer $token';
         }
         handler.next(options);
       },
       onError: (error, handler) async {
-        final isAuthCall = error.requestOptions.path.startsWith('/auth/');
+        final isAuthCall = _isPublicAuthCall(error.requestOptions.path);
         if (error.response?.statusCode == 401 &&
             !isAuthCall &&
             !_isRetry(error.requestOptions)) {
@@ -48,6 +47,9 @@ class ApiClient {
   Future<bool>? _refreshing;
 
   Dio get raw => _dio;
+
+  static bool _isPublicAuthCall(String path) =>
+      path.startsWith('/auth/') && !path.startsWith('/auth/link/');
 
   bool _isRetry(RequestOptions options) => options.extra['retried'] == true;
   RequestOptions _markRetry(RequestOptions options) {

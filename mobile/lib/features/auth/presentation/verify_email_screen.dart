@@ -36,6 +36,8 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
     try {
       await ref.read(authRepositoryProvider).resendVerification(widget.email);
       setState(() => _message = 'Verification email sent to ${widget.email}.');
+    } catch (e) {
+      setState(() => _message = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }

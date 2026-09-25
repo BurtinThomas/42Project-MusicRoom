@@ -7,6 +7,8 @@ class UserProfile {
     this.friendsInfo,
     this.privateInfo,
     this.isSelf = false,
+    this.email,
+    this.linkedProviders = const [],
   });
 
   final String id;
@@ -16,6 +18,8 @@ class UserProfile {
   final Map<String, dynamic>? friendsInfo;
   final Map<String, dynamic>? privateInfo;
   final bool isSelf;
+  final String? email;
+  final List<String> linkedProviders;
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
         id: json['id'] as String,
@@ -30,5 +34,9 @@ class UserProfile {
             ? Map<String, dynamic>.from(json['privateInfo'] as Map)
             : null,
         isSelf: json['isSelf'] as bool? ?? false,
+        email: json['email'] as String?,
+        linkedProviders: [
+          for (final p in (json['linkedProviders'] as List? ?? [])) '$p'
+        ],
       );
 }

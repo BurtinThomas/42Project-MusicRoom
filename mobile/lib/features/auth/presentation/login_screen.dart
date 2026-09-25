@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../../core/config/app_config.dart';
+import '../../settings/presentation/backend_url_dialog.dart';
 import '../application/auth_controller.dart';
 import '../data/auth_repository.dart';
 import 'google_button.dart';
@@ -166,6 +168,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     TextButton(
                       onPressed: () => context.push('/register'),
                       child: const Text("Don't have an account? Sign up"),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: () async {
+                        if (await editBackendUrl(context)) setState(() {});
+                      },
+                      icon: const Icon(Icons.dns_outlined, size: 18),
+                      label: Text('Server: ${AppConfig.instance.backendUrl}'),
                     ),
                   ],
                 ),

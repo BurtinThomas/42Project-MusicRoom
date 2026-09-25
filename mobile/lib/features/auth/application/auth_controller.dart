@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -25,6 +27,16 @@ final authControllerProvider =
   return AuthController(ref);
 });
 
+final currentUserIdProvider = FutureProvider<String?>((ref) async {
+  ref.watch(authControllerProvider);
+  final token = await TokenStorage.instance.accessToken;
+  if (token == null) return null;
+  final parts = token.split('.');
+  if (parts.length != 3) return null;
+  final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+  return (jsonDecode(payload) as Map<String, dynamic>)['sub'] as String?;
+});
+
 class AuthController extends StateNotifier<AuthState> {
   AuthController(this._ref) : super(const AuthState()) {
     _bootstrap();
@@ -36,10 +48,6 @@ class AuthController extends StateNotifier<AuthState> {
   static const _googleServerClientId =
       '949617302313-gi9gdc533ti8st2tatakookeeujou0k8.apps.googleusercontent.com';
 
-  // google_sign_in_web asserts that serverClientId is null (it's not
-  // supported on web); passing it there permanently breaks the plugin's
-  // init. The web client ID is auto-detected from the
-  // google-signin-client_id meta tag in web/index.html instead.
   final GoogleSignIn googleSignIn = GoogleSignIn(
     scopes: const ['email'],
     serverClientId: kIsWeb ? null : _googleServerClientId,
@@ -47,10 +55,15 @@ class AuthController extends StateNotifier<AuthState> {
 
   Future<void> _bootstrap() async {
     final token = await TokenStorage.instance.accessToken;
-    state = state.copyWith(
-      status:
-          token != null ? AuthStatus.authenticated : AuthStatus.unauthenticated,
-    );
+    if (token != null) {
+      _onLoggedIn();
+    } else {
+      state = state.copyWith(status: AuthStatus.unauthenticated);
+    }
+  }
+
+  void _onLoggedIn() {
+    state = state.copyWith(status: AuthStatus.authenticated);
   }
 
   Future<void> register({
@@ -64,7 +77,7 @@ class AuthController extends StateNotifier<AuthState> {
 
   Future<void> login({required String email, required String password}) async {
     await _repo.login(email: email, password: password);
-    state = state.copyWith(status: AuthStatus.authenticated);
+    _onLoggedIn();
   }
 
   Future<void> loginWithGoogle() async {
@@ -80,11 +93,28 @@ class AuthController extends StateNotifier<AuthState> {
       throw AuthException('Google did not return an identity token.');
     }
     await _repo.loginWithGoogle(idToken);
-    state = state.copyWith(status: AuthStatus.authenticated);
+    _onLoggedIn();
+  }
+
+  Future<void> linkGoogle() async {
+    final account = await googleSignIn.signIn();
+    if (account == null) return;
+    await linkGoogleAccount(account);
+  }
+
+  Future<void> linkGoogleAccount(GoogleSignInAccount account) async {
+    final idToken = (await account.authentication).idToken;
+    if (idToken == null) {
+      throw AuthException('Google did not return an identity token.');
+    }
+    await _repo.linkGoogle(idToken);
   }
 
   Future<void> logout() async {
     await _repo.logout();
+    try {
+      await googleSignIn.signOut();
+    } catch (_) {}
     state = state.copyWith(status: AuthStatus.unauthenticated);
   }
 

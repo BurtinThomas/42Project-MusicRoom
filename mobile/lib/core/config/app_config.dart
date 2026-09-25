@@ -17,8 +17,8 @@ class AppConfig {
   String _backendUrl = defaultBackendUrl;
   String get backendUrl => _backendUrl;
 
-  String get wsEventsUrl => '$_backendUrl/ws/events';
-  String get wsPlaylistsUrl => '$_backendUrl/ws/playlists';
+  static const wsEventsNamespace = '/ws/events';
+  static const wsPlaylistsNamespace = '/ws/playlists';
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();

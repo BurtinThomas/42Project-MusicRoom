@@ -1,13 +1,10 @@
-# OS
 .DS_Store
 
-# IDEs
 .idea/
 *.iml
 *.ipr
 *.iws
 
-# Backend (NestJS)
 backend/dist/
 backend/node_modules/
 backend/.env
@@ -21,12 +18,13 @@ backend/*.log
 backend/npm-debug.log*
 backend/coverage/
 
-# Mobile (Flutter)
 mobile/**/doc/api/
 mobile/.dart_tool/
 mobile/.flutter-plugins
 mobile/.flutter-plugins-dependencies
 mobile/.pub-cache/
 mobile/.pub/
-mobile/build/
+mobile/build
+mobile/android/build/
 mobile/lib/generated_plugin_registrant.dart
+mobile/lib/**/*.g.dart

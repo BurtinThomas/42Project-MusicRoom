@@ -35,23 +35,22 @@ export class BeaconsService {
             tracks: {
               where: { playedAt: null },
               orderBy: [{ score: 'desc' }, { createdAt: 'asc' }],
-              take: 1,
+              take: 3,
               include: { track: true },
             },
           },
         },
       },
     });
-    if (!beacon)
-      throw new NotFoundException('No event registered for this beacon');
-    if (beacon.event.visibility !== Visibility.PUBLIC) {
+    if (!beacon || beacon.event.visibility !== Visibility.PUBLIC) {
       throw new NotFoundException('No event registered for this beacon');
     }
 
     return {
       eventId: beacon.event.id,
       name: beacon.event.name,
-      currentTopTrack: beacon.event.tracks[0]?.track ?? null,
+      voteLicense: beacon.event.voteLicense,
+      upNext: beacon.event.tracks.map((t) => t.track),
     };
   }
 }

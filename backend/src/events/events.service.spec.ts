@@ -1,4 +1,8 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { VoteLicense, Visibility } from '@prisma/client';
 import { EventsService } from './events.service';
 
@@ -69,6 +73,63 @@ describe('EventsService', () => {
 
     await expect(
       service.advance('someone-else', 'evt1'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('refuses a LOCATION_TIME event without a place and a time window', async () => {
+    const { service } = makeService({});
+
+    await expect(
+      service.create('owner', {
+        name: 'Rooftop',
+        voteLicense: VoteLicense.LOCATION_TIME,
+      } as any),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('refuses a LOCATION_TIME vote from too far away', async () => {
+    const now = Date.now();
+    const { service } = makeService({
+      event: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'evt1',
+          ownerId: 'owner',
+          visibility: Visibility.PUBLIC,
+          voteLicense: VoteLicense.LOCATION_TIME,
+          locationLat: 48.8966,
+          locationLng: 2.3185,
+          locationRadiusM: 200,
+          voteWindowStart: new Date(now - 3600_000),
+          voteWindowEnd: new Date(now + 3600_000),
+        }),
+      },
+    });
+
+    await expect(
+      service.vote('guest', 'evt1', 'track1', { lat: 48.875, lng: 2.3 }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('refuses a LOCATION_TIME vote outside the time window', async () => {
+    const now = Date.now();
+    const { service } = makeService({
+      event: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'evt1',
+          ownerId: 'owner',
+          visibility: Visibility.PUBLIC,
+          voteLicense: VoteLicense.LOCATION_TIME,
+          locationLat: 48.8966,
+          locationLng: 2.3185,
+          locationRadiusM: 200,
+          voteWindowStart: new Date(now + 3600_000),
+          voteWindowEnd: new Date(now + 7200_000),
+        }),
+      },
+    });
+
+    await expect(
+      service.vote('guest', 'evt1', 'track1', { lat: 48.8966, lng: 2.3185 }),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

@@ -9,11 +9,12 @@ class EventDetail {
   final List<EventTrack> history;
 
   factory EventDetail.fromJson(Map<String, dynamic> json) => EventDetail(
-        event: MusicEvent.fromJson(json['event']),
-        queue:
-            (json['queue'] as List).map((e) => EventTrack.fromJson(e)).toList(),
+        event: MusicEvent.fromJson(Map<String, dynamic>.from(json['event'])),
+        queue: (json['queue'] as List)
+            .map((e) => EventTrack.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
         history: (json['history'] as List)
-            .map((e) => EventTrack.fromJson(e))
+            .map((e) => EventTrack.fromJson(Map<String, dynamic>.from(e)))
             .toList(),
       );
 }
@@ -61,19 +62,10 @@ class EventsRepository {
     return _api.raw.post('/events/$eventId/invites', data: {'userId': userId});
   }
 
-  Future<EventTrack> suggestTrack(
-    String eventId, {
-    required String title,
-    required String artist,
-    int? durationMs,
-    String? externalRef,
-  }) async {
-    final response = await _api.raw.post('/events/$eventId/tracks', data: {
-      'title': title,
-      'artist': artist,
-      if (durationMs != null) 'durationMs': durationMs,
-      if (externalRef != null) 'externalRef': externalRef,
-    });
+  Future<EventTrack> suggestTrack(String eventId,
+      {required String title, required String artist}) async {
+    final response = await _api.raw.post('/events/$eventId/tracks',
+        data: {'title': title, 'artist': artist});
     return EventTrack.fromJson(response.data);
   }
 
@@ -87,8 +79,16 @@ class EventsRepository {
     return EventTrack.fromJson(response.data);
   }
 
-  Future<void> unvote(String eventId, String eventTrackId) {
-    return _api.raw.delete('/events/$eventId/tracks/$eventTrackId/vote');
+  Future<EventTrack> unvote(String eventId, String eventTrackId) async {
+    final response =
+        await _api.raw.delete('/events/$eventId/tracks/$eventTrackId/vote');
+    return EventTrack.fromJson(response.data);
+  }
+
+  Future<void> setBeacon(String eventId,
+      {required String uuid, required int major, required int minor}) {
+    return _api.raw.post('/beacons/events/$eventId',
+        data: {'uuid': uuid, 'major': major, 'minor': minor});
   }
 
   Future<EventTrack> advance(String eventId) async {

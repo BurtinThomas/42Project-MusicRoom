@@ -15,6 +15,7 @@ class PlaylistsListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Music Playlist Editor')),
       floatingActionButton: FloatingActionButton(
+        tooltip: 'New playlist',
         onPressed: () => context.push('/playlists/create'),
         child: const Icon(Icons.add),
       ),
@@ -37,9 +38,6 @@ class PlaylistsListScreen extends ConsumerWidget {
                 subtitle: Text(p.editLicense == EditLicense.open
                     ? 'Open editing'
                     : 'Invite-only editing'),
-                trailing: p.requiresPaidPlan
-                    ? const Icon(Icons.workspace_premium)
-                    : null,
                 onTap: () => context.push('/playlists/${p.id}'),
               );
             },

@@ -21,6 +21,9 @@ export class EventsService {
   ) {}
 
   async create(ownerId: string, dto: CreateEventDto) {
+    if (dto.voteLicense === VoteLicense.LOCATION_TIME) {
+      this.assertValidLocationTime(dto);
+    }
     return this.prisma.event.create({
       data: {
         ownerId,
@@ -38,6 +41,28 @@ export class EventsService {
           : undefined,
       },
     });
+  }
+
+  private assertValidLocationTime(dto: CreateEventDto): void {
+    if (
+      dto.locationLat == null ||
+      dto.locationLng == null ||
+      dto.locationRadiusM == null
+    ) {
+      throw new BadRequestException(
+        'A location/time license needs a location (lat, lng, radius)',
+      );
+    }
+    if (!dto.voteWindowStart || !dto.voteWindowEnd) {
+      throw new BadRequestException(
+        'A location/time license needs a voting window (start and end)',
+      );
+    }
+    if (new Date(dto.voteWindowStart) >= new Date(dto.voteWindowEnd)) {
+      throw new BadRequestException(
+        'The voting window must end after it starts',
+      );
+    }
   }
 
   async listVisible(userId: string) {
@@ -75,11 +100,18 @@ export class EventsService {
     const visible = await this.canView(event, userId);
     if (!visible) throw new ForbiddenException('This event is private');
 
-    const tracks = await this.prisma.eventTrack.findMany({
+    const queued = await this.prisma.eventTrack.findMany({
       where: { eventId, playedAt: null },
-      include: { track: true, _count: { select: { votes: true } } },
+      include: {
+        track: true,
+        votes: { where: { userId }, select: { id: true } },
+      },
       orderBy: [{ score: 'desc' }, { createdAt: 'asc' }],
     });
+    const tracks = queued.map(({ votes, ...et }) => ({
+      ...et,
+      votedByMe: votes.length > 0,
+    }));
 
     const history = await this.prisma.eventTrack.findMany({
       where: { eventId, playedAt: { not: null } },
@@ -95,6 +127,11 @@ export class EventsService {
     const event = await this.getOrThrow(eventId);
     if (event.ownerId !== ownerId)
       throw new ForbiddenException('Only the owner can invite users');
+    const invitee = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!invitee) throw new NotFoundException('User not found');
     return this.prisma.eventInvite.upsert({
       where: { eventId_userId: { eventId, userId } },
       create: { eventId, userId },
@@ -108,12 +145,7 @@ export class EventsService {
     if (!visible) throw new ForbiddenException('This event is private');
 
     const track = await this.prisma.track.create({
-      data: {
-        title: dto.title,
-        artist: dto.artist,
-        durationMs: dto.durationMs,
-        externalRef: dto.externalRef,
-      },
+      data: { title: dto.title, artist: dto.artist },
     });
 
     const eventTrack = await this.prisma.eventTrack.create({
@@ -163,19 +195,26 @@ export class EventsService {
   }
 
   async unvote(userId: string, eventId: string, eventTrackId: string) {
-    const vote = await this.prisma.vote.findUnique({
-      where: { eventTrackId_userId: { eventTrackId, userId } },
+    const eventTrack = await this.prisma.eventTrack.findFirst({
+      where: { id: eventTrackId, eventId },
     });
-    if (!vote) throw new NotFoundException('You have not voted for this track');
+    if (!eventTrack)
+      throw new NotFoundException('Track not found in this event');
+    if (eventTrack.playedAt)
+      throw new BadRequestException('This track has already been played');
 
-    const [, updated] = await this.prisma.$transaction([
-      this.prisma.vote.delete({ where: { id: vote.id } }),
-      this.prisma.eventTrack.update({
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.vote.deleteMany({
+        where: { eventTrackId, userId },
+      });
+      if (count === 0)
+        throw new NotFoundException('You have not voted for this track');
+      return tx.eventTrack.update({
         where: { id: eventTrackId },
         data: { score: { decrement: 1 } },
         include: { track: true },
-      }),
-    ]);
+      });
+    });
 
     this.events.emit('event.vote.changed', { eventId, eventTrack: updated });
     return updated;
@@ -192,12 +231,17 @@ export class EventsService {
     });
     if (!next) throw new NotFoundException('Queue is empty');
 
-    const updated = await this.prisma.eventTrack.update({
-      where: { id: next.id },
+    const { count } = await this.prisma.eventTrack.updateMany({
+      where: { id: next.id, playedAt: null },
       data: { playedAt: new Date() },
+    });
+    if (count === 0)
+      throw new ConflictException('This track was just played, refresh');
+
+    const updated = await this.prisma.eventTrack.findUniqueOrThrow({
+      where: { id: next.id },
       include: { track: true },
     });
-
     this.events.emit('event.track.played', { eventId, eventTrack: updated });
     return updated;
   }

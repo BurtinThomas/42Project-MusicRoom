@@ -1,16 +1,15 @@
-import { Module } from '@nestjs/common';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import configuration from './config/configuration';
 import { PrismaModule } from './common/prisma/prisma.module';
-import { ActionLogInterceptor } from './common/logging/action-log.interceptor';
+import { ActionLogMiddleware } from './common/logging/action-log.middleware';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { UsersModule } from './users/users.module';
 import { FriendshipsModule } from './friendships/friendships.module';
-import { DevicesModule } from './devices/devices.module';
 import { EventsModule } from './events/events.module';
 import { PlaylistsModule } from './playlists/playlists.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
@@ -35,7 +34,6 @@ import { SyncModule } from './sync/sync.module';
     AuthModule,
     UsersModule,
     FriendshipsModule,
-    DevicesModule,
     EventsModule,
     PlaylistsModule,
     SubscriptionsModule,
@@ -45,7 +43,10 @@ import { SyncModule } from './sync/sync.module';
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
-    { provide: APP_INTERCEPTOR, useClass: ActionLogInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(ActionLogMiddleware).forRoutes('*');
+  }
+}

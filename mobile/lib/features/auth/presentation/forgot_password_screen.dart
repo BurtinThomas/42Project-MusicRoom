@@ -23,6 +23,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       await ref.read(authRepositoryProvider).forgotPassword(_email.text.trim());
       setState(() =>
           _message = 'If this account exists, a reset email has been sent.');
+    } catch (e) {
+      setState(() => _message = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }

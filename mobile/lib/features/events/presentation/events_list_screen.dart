@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/models/event.dart';
+import '../../../shared/api_error.dart';
 import '../application/events_providers.dart';
 
 class EventsListScreen extends ConsumerWidget {
@@ -26,6 +27,7 @@ class EventsListScreen extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        tooltip: 'New event',
         onPressed: () => context.push('/home/create'),
         child: const Icon(Icons.add),
       ),
@@ -33,7 +35,8 @@ class EventsListScreen extends ConsumerWidget {
         onRefresh: () => ref.refresh(eventsListProvider.future),
         child: eventsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Failed to load events: $e')),
+          error: (e, _) => Center(
+              child: Text('Failed to load events: ${apiErrorMessage(e)}')),
           data: (events) {
             if (events.isEmpty) {
               return const Center(child: Text('No events yet. Create one!'));
@@ -47,7 +50,7 @@ class EventsListScreen extends ConsumerWidget {
                       ? Icons.public
                       : Icons.lock),
                   title: Text(e.name),
-                  subtitle: Text(_licenseLabel(e.voteLicense)),
+                  subtitle: Text(describeLicense(e)),
                   onTap: () => context.push('/home/${e.id}'),
                 );
               },
@@ -56,16 +59,5 @@ class EventsListScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  String _licenseLabel(VoteLicense l) {
-    switch (l) {
-      case VoteLicense.open:
-        return 'Anyone can vote';
-      case VoteLicense.inviteOnly:
-        return 'Invite-only voting';
-      case VoteLicense.locationTime:
-        return 'Location & time restricted voting';
-    }
   }
 }

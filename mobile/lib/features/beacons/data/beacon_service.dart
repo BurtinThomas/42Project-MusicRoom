@@ -2,14 +2,15 @@ import 'dart:async';
 
 import 'package:flutter_beacon/flutter_beacon.dart';
 
+import '../../../core/models/track.dart';
 import '../../../core/network/api_client.dart';
 
 class NearbyEventInfo {
   NearbyEventInfo(
-      {required this.eventId, required this.name, this.currentTopTrackTitle});
+      {required this.eventId, required this.name, required this.upNext});
   final String eventId;
   final String name;
-  final String? currentTopTrackTitle;
+  final List<Track> upNext;
 }
 
 class BeaconService {
@@ -42,7 +43,10 @@ class BeaconService {
           _controller.add(NearbyEventInfo(
             eventId: response.data['eventId'],
             name: response.data['name'],
-            currentTopTrackTitle: response.data['currentTopTrack']?['title'],
+            upNext: [
+              for (final t in response.data['upNext'] as List)
+                Track.fromJson(Map<String, dynamic>.from(t))
+            ],
           ));
         } catch (_) {}
       }

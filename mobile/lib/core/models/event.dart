@@ -81,6 +81,7 @@ class EventTrack {
     required this.track,
     required this.score,
     this.playedAt,
+    this.votedByMe = false,
   });
 
   final String id;
@@ -88,13 +89,24 @@ class EventTrack {
   final Track track;
   final int score;
   final DateTime? playedAt;
+  final bool votedByMe;
+
+  EventTrack copyWith({int? score, bool? votedByMe}) => EventTrack(
+        id: id,
+        eventId: eventId,
+        track: track,
+        score: score ?? this.score,
+        playedAt: playedAt,
+        votedByMe: votedByMe ?? this.votedByMe,
+      );
 
   factory EventTrack.fromJson(Map<String, dynamic> json) => EventTrack(
         id: json['id'] as String,
         eventId: json['eventId'] as String,
-        track: Track.fromJson(json['track'] as Map<String, dynamic>),
+        track: Track.fromJson(Map<String, dynamic>.from(json['track'] as Map)),
         score: json['score'] as int,
         playedAt:
             json['playedAt'] != null ? DateTime.parse(json['playedAt']) : null,
+        votedByMe: json['votedByMe'] as bool? ?? false,
       );
 }

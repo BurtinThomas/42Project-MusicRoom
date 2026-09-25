@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/providers.dart';
-import '../data/subscriptions_repository.dart';
-
-final subscriptionsRepositoryProvider =
-    Provider((ref) => SubscriptionsRepository(ref.watch(apiClientProvider)));
-final myPlanProvider = FutureProvider.autoDispose(
-    (ref) => ref.watch(subscriptionsRepositoryProvider).myPlan());
+import '../../../shared/api_error.dart';
+import '../application/subscriptions_providers.dart';
 
 class SubscriptionScreen extends ConsumerWidget {
   const SubscriptionScreen({super.key});
@@ -20,18 +15,24 @@ class SubscriptionScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Subscription')),
       body: planAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) => Center(child: Text(apiErrorMessage(e))),
         data: (plan) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (plan.isFree)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Text('Playlists: ${plan.playlistsOwned} / '
+                    '${plan.freePlaylistLimit} used'),
+              ),
             _PlanCard(
               title: 'Free',
               price: '€0',
-              features: const [
-                'Vote on tracks',
-                'Private, owner-only playlists'
+              features: [
+                'Music Track Vote: unlimited events and votes',
+                'Music Playlist Editor: up to ${plan.freePlaylistLimit} playlists',
               ],
-              selected: plan == 'FREE',
+              selected: plan.isFree,
               onSelect: () => _change(ref, 'FREE'),
             ),
             const SizedBox(height: 16),
@@ -39,11 +40,10 @@ class SubscriptionScreen extends ConsumerWidget {
               title: 'Paid',
               price: '€4.99 / mo',
               features: const [
-                'Everything in Free',
-                'Public / collaborative playlists (Music Playlist Editor)',
-                'Priority support',
+                'Music Track Vote: unlimited events and votes',
+                'Music Playlist Editor: unlimited playlists',
               ],
-              selected: plan == 'PAID',
+              selected: !plan.isFree,
               onSelect: () => _change(ref, 'PAID'),
             ),
           ],
@@ -53,7 +53,12 @@ class SubscriptionScreen extends ConsumerWidget {
   }
 
   Future<void> _change(WidgetRef ref, String plan) async {
-    await ref.read(subscriptionsRepositoryProvider).setPlan(plan);
+    await runGuarded(
+      () => ref.read(subscriptionsRepositoryProvider).setPlan(plan),
+      success: plan == 'PAID'
+          ? 'You are now on the Paid plan'
+          : 'You are now on the Free plan',
+    );
     ref.invalidate(myPlanProvider);
   }
 }

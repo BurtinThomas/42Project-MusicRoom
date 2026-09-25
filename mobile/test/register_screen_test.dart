@@ -31,8 +31,7 @@ void main() {
     await tester.enterText(find.byType(TextFormField).at(2), 'longenoughpw');
     await tester.pump();
 
-    final formState =
-        tester.state<FormState>(find.byType(Form));
+    final formState = tester.state<FormState>(find.byType(Form));
     expect(formState.validate(), isTrue);
   });
 }

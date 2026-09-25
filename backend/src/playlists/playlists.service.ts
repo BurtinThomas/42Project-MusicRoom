@@ -8,6 +8,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   EditLicense,
   Playlist,
+  Prisma,
   SubscriptionPlan,
   Visibility,
 } from '@prisma/client';
@@ -15,6 +16,8 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { AddPlaylistTrackDto } from './dto/add-track.dto';
 import { CreatePlaylistDto } from './dto/create-playlist.dto';
 import { MovePlaylistTrackDto } from './dto/move-track.dto';
+
+export const FREE_PLAYLIST_LIMIT = 3;
 
 @Injectable()
 export class PlaylistsService {
@@ -24,31 +27,26 @@ export class PlaylistsService {
   ) {}
 
   async create(ownerId: string, dto: CreatePlaylistDto): Promise<Playlist> {
-    const visibility = dto.visibility ?? Visibility.PUBLIC;
-    const editLicense = dto.editLicense ?? EditLicense.OPEN;
-
-    const isCollaborative =
-      visibility === Visibility.PUBLIC || editLicense === EditLicense.OPEN;
-    if (isCollaborative) {
-      const owner = await this.prisma.user.findUniqueOrThrow({
-        where: { id: ownerId },
-      });
-      if (owner.subscriptionPlan !== SubscriptionPlan.PAID) {
-        throw new ForbiddenException(
-          'Collaborative playlists (public or open-edit) require a paid subscription. ' +
-            'Free accounts can create private, owner-only playlists.',
-        );
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT 1 FROM "User" WHERE "id" = ${ownerId} FOR UPDATE`;
+      const owner = await tx.user.findUniqueOrThrow({ where: { id: ownerId } });
+      if (owner.subscriptionPlan === SubscriptionPlan.FREE) {
+        const owned = await tx.playlist.count({ where: { ownerId } });
+        if (owned >= FREE_PLAYLIST_LIMIT) {
+          throw new ForbiddenException(
+            `The Free plan is limited to ${FREE_PLAYLIST_LIMIT} playlists. ` +
+              'Switch to the Paid plan to create more.',
+          );
+        }
       }
-    }
-
-    return this.prisma.playlist.create({
-      data: {
-        ownerId,
-        name: dto.name,
-        visibility,
-        editLicense,
-        requiresPaidPlan: isCollaborative,
-      },
+      return tx.playlist.create({
+        data: {
+          ownerId,
+          name: dto.name,
+          visibility: dto.visibility ?? Visibility.PUBLIC,
+          editLicense: dto.editLicense ?? EditLicense.OPEN,
+        },
+      });
     });
   }
 
@@ -82,6 +80,13 @@ export class PlaylistsService {
     return !!invite;
   }
 
+  private async lockPlaylist(
+    tx: Prisma.TransactionClient,
+    playlistId: string,
+  ): Promise<void> {
+    await tx.$executeRaw`SELECT 1 FROM "Playlist" WHERE "id" = ${playlistId} FOR UPDATE`;
+  }
+
   private async assertCanEdit(
     playlist: Playlist,
     userId: string,
@@ -103,6 +108,11 @@ export class PlaylistsService {
     if (playlist.ownerId !== ownerId) {
       throw new ForbiddenException('Only the owner can invite users');
     }
+    const invitee = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!invitee) throw new NotFoundException('User not found');
     return this.prisma.playlistInvite.upsert({
       where: { playlistId_userId: { playlistId, userId } },
       create: { playlistId, userId },
@@ -127,42 +137,20 @@ export class PlaylistsService {
     const playlist = await this.getOrThrow(playlistId);
     await this.assertCanEdit(playlist, userId);
 
-    return this.prisma.$transaction(async (tx) => {
-      const count = await tx.playlistTrack.count({ where: { playlistId } });
-      const insertAt =
-        dto.position != null
-          ? Math.max(0, Math.min(dto.position, count))
-          : count;
-
-      if (insertAt < count) {
-        await tx.playlistTrack.updateMany({
-          where: { playlistId, position: { gte: insertAt } },
-          data: { position: { increment: 1 } },
-        });
-      }
-
+    const playlistTrack = await this.prisma.$transaction(async (tx) => {
+      await this.lockPlaylist(tx, playlistId);
+      const position = await tx.playlistTrack.count({ where: { playlistId } });
       const track = await tx.track.create({
-        data: {
-          title: dto.title,
-          artist: dto.artist,
-          durationMs: dto.durationMs,
-          externalRef: dto.externalRef,
-        },
+        data: { title: dto.title, artist: dto.artist },
       });
-
-      const playlistTrack = await tx.playlistTrack.create({
-        data: {
-          playlistId,
-          trackId: track.id,
-          addedById: userId,
-          position: insertAt,
-        },
+      return tx.playlistTrack.create({
+        data: { playlistId, trackId: track.id, addedById: userId, position },
         include: { track: true },
       });
-
-      this.events.emit('playlist.track.added', { playlistId, playlistTrack });
-      return playlistTrack;
     });
+
+    this.events.emit('playlist.track.added', { playlistId, playlistTrack });
+    return playlistTrack;
   }
 
   async removeTrack(
@@ -174,6 +162,7 @@ export class PlaylistsService {
     await this.assertCanEdit(playlist, userId);
 
     await this.prisma.$transaction(async (tx) => {
+      await this.lockPlaylist(tx, playlistId);
       const track = await tx.playlistTrack.findFirst({
         where: { id: playlistTrackId, playlistId },
       });
@@ -201,6 +190,7 @@ export class PlaylistsService {
     await this.assertCanEdit(playlist, userId);
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      await this.lockPlaylist(tx, playlistId);
       const moved = await tx.playlistTrack.findFirst({
         where: { id: playlistTrackId, playlistId },
       });

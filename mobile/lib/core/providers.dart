@@ -17,13 +17,13 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 });
 
 final eventsSocketProvider = Provider<SocketChannel>((ref) {
-  final channel = SocketChannel(AppConfig.instance.wsEventsUrl);
+  final channel = SocketChannel(AppConfig.wsEventsNamespace);
   ref.onDispose(channel.dispose);
   return channel;
 });
 
 final playlistsSocketProvider = Provider<SocketChannel>((ref) {
-  final channel = SocketChannel(AppConfig.instance.wsPlaylistsUrl);
+  final channel = SocketChannel(AppConfig.wsPlaylistsNamespace);
   ref.onDispose(channel.dispose);
   return channel;
 });

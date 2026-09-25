@@ -8,9 +8,10 @@ class PlaylistDetail {
   final List<PlaylistTrack> tracks;
 
   factory PlaylistDetail.fromJson(Map<String, dynamic> json) => PlaylistDetail(
-        playlist: Playlist.fromJson(json['playlist']),
+        playlist:
+            Playlist.fromJson(Map<String, dynamic>.from(json['playlist'])),
         tracks: (json['tracks'] as List)
-            .map((e) => PlaylistTrack.fromJson(e))
+            .map((e) => PlaylistTrack.fromJson(Map<String, dynamic>.from(e)))
             .toList(),
       );
 }
@@ -52,18 +53,10 @@ class PlaylistsRepository {
         .post('/playlists/$playlistId/invites', data: {'userId': userId});
   }
 
-  Future<PlaylistTrack> addTrack(
-    String playlistId, {
-    required String title,
-    required String artist,
-    int? position,
-  }) async {
-    final response =
-        await _api.raw.post('/playlists/$playlistId/tracks', data: {
-      'title': title,
-      'artist': artist,
-      if (position != null) 'position': position,
-    });
+  Future<PlaylistTrack> addTrack(String playlistId,
+      {required String title, required String artist}) async {
+    final response = await _api.raw.post('/playlists/$playlistId/tracks',
+        data: {'title': title, 'artist': artist});
     return PlaylistTrack.fromJson(response.data);
   }
 

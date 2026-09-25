@@ -1,19 +1,16 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { IsBoolean, IsUUID } from 'class-validator';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
+import { FriendshipDto, FriendshipWithUsersDto } from './dto/friendship.dto';
+import { RequestFriendshipDto } from './dto/request-friendship.dto';
+import { RespondFriendshipDto } from './dto/respond-friendship.dto';
 import { FriendshipsService } from './friendships.service';
-
-class RequestFriendshipDto {
-  @IsUUID()
-  addresseeId!: string;
-}
-
-class RespondFriendshipDto {
-  @IsBoolean()
-  accept!: boolean;
-}
 
 @ApiTags('friendships')
 @ApiBearerAuth()
@@ -22,11 +19,16 @@ export class FriendshipsController {
   constructor(private readonly friendships: FriendshipsService) {}
 
   @Get()
+  @ApiOkResponse({
+    type: [FriendshipWithUsersDto],
+    description: 'Pending and accepted friendships of the caller',
+  })
   list(@CurrentUser() user: AuthenticatedUser) {
     return this.friendships.listFor(user.id);
   }
 
   @Post()
+  @ApiCreatedResponse({ type: FriendshipDto })
   request(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: RequestFriendshipDto,
@@ -35,6 +37,10 @@ export class FriendshipsController {
   }
 
   @Post(':id/respond')
+  @ApiCreatedResponse({
+    type: FriendshipDto,
+    description: 'The accepted friendship, or the deleted request if declined',
+  })
   respond(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,

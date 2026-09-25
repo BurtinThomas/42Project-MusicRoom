@@ -12,7 +12,6 @@ export const SYNC_ACTION_TYPES = [
   'event.suggestTrack',
   'event.vote',
   'event.unvote',
-  'event.advance',
   'playlist.addTrack',
   'playlist.removeTrack',
   'playlist.moveTrack',

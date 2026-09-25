@@ -10,6 +10,7 @@ import {
   OnGatewayConnection,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { authenticateSocket } from '../common/ws/authenticate-socket';
 import { EventsService } from './events.service';
 
 @WebSocketGateway({ namespace: '/ws/events', cors: { origin: '*' } })
@@ -22,22 +23,8 @@ export class EventsGateway implements OnGatewayConnection {
     private readonly eventsService: EventsService,
   ) {}
 
-  async handleConnection(client: Socket) {
-    const token =
-      (client.handshake.auth?.token as string) ||
-      (client.handshake.query?.token as string);
-    if (!token) {
-      client.disconnect(true);
-      return;
-    }
-    try {
-      const payload = await this.jwt.verifyAsync(token, {
-        secret: this.config.get<string>('jwt.accessSecret'),
-      });
-      (client.data as any).userId = payload.sub;
-    } catch {
-      client.disconnect(true);
-    }
+  handleConnection(client: Socket) {
+    return authenticateSocket(client, this.jwt, this.config);
   }
 
   @SubscribeMessage('event:join')
@@ -45,7 +32,7 @@ export class EventsGateway implements OnGatewayConnection {
     @ConnectedSocket() client: Socket,
     @MessageBody() eventId: string,
   ) {
-    const userId = (client.data as any).userId;
+    const userId = client.data.userId;
     try {
       await this.eventsService.getDetail(userId, eventId);
       client.join(`event:${eventId}`);

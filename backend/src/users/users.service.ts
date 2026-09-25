@@ -6,7 +6,7 @@ import {
 import * as argon2 from 'argon2';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { AuthProvider, Prisma, SubscriptionPlan, User } from '@prisma/client';
+import { AuthProvider, Prisma, User } from '@prisma/client';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { FriendshipsService } from '../friendships/friendships.service';
 
@@ -167,16 +167,6 @@ export class UsersService {
     });
   }
 
-  async setSubscriptionPlan(
-    userId: string,
-    plan: SubscriptionPlan,
-  ): Promise<User> {
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { subscriptionPlan: plan },
-    });
-  }
-
   async getProfileForViewer(viewerId: string, targetId: string) {
     const target = await this.prisma.user.findUnique({
       where: { id: targetId },
@@ -191,10 +181,16 @@ export class UsersService {
     };
 
     if (viewerId === targetId) {
+      const identities = await this.prisma.socialIdentity.findMany({
+        where: { userId: targetId },
+        select: { provider: true },
+      });
       return {
         ...base,
+        email: target.email,
         friendsInfo: target.friendsInfo,
         privateInfo: target.privateInfo,
+        linkedProviders: identities.map((i) => i.provider),
         isSelf: true,
       };
     }

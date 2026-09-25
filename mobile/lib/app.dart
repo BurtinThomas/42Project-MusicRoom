@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/offline/application/offline_providers.dart';
+import 'shared/api_error.dart';
 
 class MusicRoomApp extends ConsumerWidget {
   const MusicRoomApp({super.key});
@@ -15,6 +16,7 @@ class MusicRoomApp extends ConsumerWidget {
 
     return MaterialApp.router(
       title: 'Music Room',
+      scaffoldMessengerKey: rootMessengerKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

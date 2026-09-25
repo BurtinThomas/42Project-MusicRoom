@@ -12,6 +12,7 @@ import 'features/beacons/presentation/nearby_events_screen.dart';
 import 'features/events/presentation/create_event_screen.dart';
 import 'features/events/presentation/event_detail_screen.dart';
 import 'features/events/presentation/events_list_screen.dart';
+import 'features/friends/presentation/friend_profile_screen.dart';
 import 'features/friends/presentation/friends_screen.dart';
 import 'features/playlists/presentation/create_playlist_screen.dart';
 import 'features/playlists/presentation/playlist_detail_screen.dart';
@@ -95,8 +96,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
-                path: '/friends',
-                builder: (context, state) => const FriendsScreen()),
+              path: '/friends',
+              builder: (context, state) => const FriendsScreen(),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  builder: (context, state) =>
+                      FriendProfileScreen(userId: state.pathParameters['id']!),
+                ),
+              ],
+            ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(

@@ -10,6 +10,7 @@ import {
   OnGatewayConnection,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { authenticateSocket } from '../common/ws/authenticate-socket';
 import { PlaylistsService } from './playlists.service';
 
 @WebSocketGateway({ namespace: '/ws/playlists', cors: { origin: '*' } })
@@ -22,22 +23,8 @@ export class PlaylistsGateway implements OnGatewayConnection {
     private readonly playlistsService: PlaylistsService,
   ) {}
 
-  async handleConnection(client: Socket) {
-    const token =
-      (client.handshake.auth?.token as string) ||
-      (client.handshake.query?.token as string);
-    if (!token) {
-      client.disconnect(true);
-      return;
-    }
-    try {
-      const payload = await this.jwt.verifyAsync(token, {
-        secret: this.config.get<string>('jwt.accessSecret'),
-      });
-      (client.data as any).userId = payload.sub;
-    } catch {
-      client.disconnect(true);
-    }
+  handleConnection(client: Socket) {
+    return authenticateSocket(client, this.jwt, this.config);
   }
 
   @SubscribeMessage('playlist:join')
@@ -45,7 +32,7 @@ export class PlaylistsGateway implements OnGatewayConnection {
     @ConnectedSocket() client: Socket,
     @MessageBody() playlistId: string,
   ) {
-    const userId = (client.data as any).userId;
+    const userId = client.data.userId;
     try {
       await this.playlistsService.getDetail(userId, playlistId);
       client.join(`playlist:${playlistId}`);
@@ -72,13 +59,11 @@ export class PlaylistsGateway implements OnGatewayConnection {
   onTrackRemoved(payload: { playlistId: string; playlistTrackId: string }) {
     this.server
       .to(`playlist:${payload.playlistId}`)
-      .emit('track:removed', { playlistTrackId: payload.playlistTrackId });
+      .emit('track:removed', payload);
   }
 
   @OnEvent('playlist.reordered')
   onReordered(payload: { playlistId: string; tracks: unknown }) {
-    this.server
-      .to(`playlist:${payload.playlistId}`)
-      .emit('reordered', payload.tracks);
+    this.server.to(`playlist:${payload.playlistId}`).emit('reordered', payload);
   }
 }

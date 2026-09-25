@@ -27,7 +27,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       await Future.delayed(const Duration(seconds: 1));
       if (mounted) context.go('/login');
     } catch (e) {
-      setState(() => _message = 'Invalid or expired code.');
+      setState(() => _message = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }

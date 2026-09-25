@@ -16,7 +16,6 @@ class Playlist {
     required this.name,
     required this.visibility,
     required this.editLicense,
-    required this.requiresPaidPlan,
   });
 
   final String id;
@@ -24,7 +23,6 @@ class Playlist {
   final String name;
   final VisibilityLevel visibility;
   final EditLicense editLicense;
-  final bool requiresPaidPlan;
 
   factory Playlist.fromJson(Map<String, dynamic> json) => Playlist(
         id: json['id'] as String,
@@ -32,7 +30,6 @@ class Playlist {
         name: json['name'] as String,
         visibility: visibilityFromJson(json['visibility'] as String),
         editLicense: editLicenseFromJson(json['editLicense'] as String),
-        requiresPaidPlan: json['requiresPaidPlan'] as bool? ?? false,
       );
 }
 
@@ -54,7 +51,7 @@ class PlaylistTrack {
   factory PlaylistTrack.fromJson(Map<String, dynamic> json) => PlaylistTrack(
         id: json['id'] as String,
         playlistId: json['playlistId'] as String,
-        track: Track.fromJson(json['track'] as Map<String, dynamic>),
+        track: Track.fromJson(Map<String, dynamic>.from(json['track'] as Map)),
         position: json['position'] as int,
         version: json['version'] as int,
       );

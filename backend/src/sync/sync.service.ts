@@ -1,14 +1,18 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
+import { ClassConstructor, plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { EventsService } from '../events/events.service';
 import { PlaylistsService } from '../playlists/playlists.service';
 import { OfflineAction } from './dto/replay-actions.dto';
-
-export interface ReplayResult {
-  id: string;
-  status: 'applied' | 'conflict' | 'error';
-  result?: unknown;
-  error?: unknown;
-}
+import {
+  AddTrackAction,
+  MoveTrackAction,
+  RemoveTrackAction,
+  SuggestTrackAction,
+  UnvoteAction,
+  VoteAction,
+} from './dto/replay-payloads.dto';
+import { ReplayResultDto } from './dto/snapshot.dto';
 
 @Injectable()
 export class SyncService {
@@ -33,7 +37,7 @@ export class SyncService {
     ]);
 
     return {
-      serverTime: new Date().toISOString(),
+      serverTime: new Date(),
       events: eventsDetailed,
       playlists: playlistsDetailed,
     };
@@ -42,8 +46,8 @@ export class SyncService {
   async replay(
     userId: string,
     actions: OfflineAction[],
-  ): Promise<ReplayResult[]> {
-    const results: ReplayResult[] = [];
+  ): Promise<ReplayResultDto[]> {
+    const results: ReplayResultDto[] = [];
 
     for (const action of actions) {
       try {
@@ -75,39 +79,64 @@ export class SyncService {
     return results;
   }
 
-  private apply(userId: string, action: OfflineAction) {
+  private async apply(userId: string, action: OfflineAction) {
     const p = action.payload;
     switch (action.type) {
-      case 'event.suggestTrack':
-        return this.eventsService.suggestTrack(userId, p.eventId, p as any);
-      case 'event.vote':
+      case 'event.suggestTrack': {
+        const dto = await this.parse(SuggestTrackAction, p);
+        return this.eventsService.suggestTrack(userId, dto.eventId, dto);
+      }
+      case 'event.vote': {
+        const dto = await this.parse(VoteAction, p);
         return this.eventsService.vote(
           userId,
-          p.eventId,
-          p.eventTrackId,
-          p as any,
+          dto.eventId,
+          dto.eventTrackId,
+          dto,
         );
-      case 'event.unvote':
-        return this.eventsService.unvote(userId, p.eventId, p.eventTrackId);
-      case 'event.advance':
-        return this.eventsService.advance(userId, p.eventId);
-      case 'playlist.addTrack':
-        return this.playlistsService.addTrack(userId, p.playlistId, p as any);
-      case 'playlist.removeTrack':
+      }
+      case 'event.unvote': {
+        const dto = await this.parse(UnvoteAction, p);
+        return this.eventsService.unvote(userId, dto.eventId, dto.eventTrackId);
+      }
+      case 'playlist.addTrack': {
+        const dto = await this.parse(AddTrackAction, p);
+        return this.playlistsService.addTrack(userId, dto.playlistId, dto);
+      }
+      case 'playlist.removeTrack': {
+        const dto = await this.parse(RemoveTrackAction, p);
         return this.playlistsService.removeTrack(
           userId,
-          p.playlistId,
-          p.playlistTrackId,
+          dto.playlistId,
+          dto.playlistTrackId,
         );
-      case 'playlist.moveTrack':
+      }
+      case 'playlist.moveTrack': {
+        const dto = await this.parse(MoveTrackAction, p);
         return this.playlistsService.moveTrack(
           userId,
-          p.playlistId,
-          p.playlistTrackId,
-          p as any,
+          dto.playlistId,
+          dto.playlistTrackId,
+          dto,
         );
-      default:
-        throw new Error(`Unknown action type: ${action.type}`);
+      }
     }
+  }
+
+  private async parse<T extends object>(
+    cls: ClassConstructor<T>,
+    payload: object,
+  ): Promise<T> {
+    const dto = plainToInstance(cls, payload);
+    const errors = await validate(dto, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
+    if (errors.length > 0) {
+      throw new BadRequestException(
+        errors.flatMap((e) => Object.values(e.constraints ?? {})),
+      );
+    }
+    return dto;
   }
 }

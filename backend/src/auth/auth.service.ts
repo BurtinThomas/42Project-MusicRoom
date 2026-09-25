@@ -13,12 +13,8 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
-
-export interface TokenPair {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: string;
-}
+import { TokenPairDto } from './dto/token-pair.dto';
+import { MessageDto } from '../common/dto/message.dto';
 
 @Injectable()
 export class AuthService {
@@ -36,7 +32,7 @@ export class AuthService {
     );
   }
 
-  async register(dto: RegisterDto): Promise<{ message: string }> {
+  async register(dto: RegisterDto): Promise<MessageDto> {
     const passwordHash = await argon2.hash(dto.password);
     const user = await this.users.createLocalUser(
       dto.email,
@@ -67,7 +63,7 @@ export class AuthService {
     return user;
   }
 
-  async resendVerification(email: string): Promise<{ message: string }> {
+  async resendVerification(email: string): Promise<MessageDto> {
     const user = await this.users.findByEmail(email);
 
     if (user && !user.emailVerified) {
@@ -83,41 +79,30 @@ export class AuthService {
     };
   }
 
-  async verifyEmail(token: string): Promise<{ message: string }> {
+  async verifyEmail(token: string): Promise<MessageDto> {
     await this.users.verifyEmail(token);
     return { message: 'Email verified, you can now log in.' };
   }
 
-  async forgotPassword(email: string): Promise<{ message: string }> {
+  async forgotPassword(email: string): Promise<MessageDto> {
     const user = await this.users.findByEmail(email);
     if (user && user.passwordHash) {
       const token = await this.users.setPasswordResetToken(user.id);
-      await this.mail.sendPasswordResetEmail(
-        user.email,
-        token,
-        this.config.get<string>('appPublicUrl')!,
-      );
+      await this.mail.sendPasswordResetEmail(user.email, token);
     }
     return {
       message: 'If this account exists, a password reset email has been sent.',
     };
   }
 
-  async resetPassword(
-    token: string,
-    newPassword: string,
-  ): Promise<{ message: string }> {
+  async resetPassword(token: string, newPassword: string): Promise<MessageDto> {
     await this.users.resetPassword(token, newPassword);
     return { message: 'Password updated, you can now log in.' };
   }
 
   async loginWithGoogle(idToken: string): Promise<User> {
-    const ticket = await this.googleClient.verifyIdToken({
-      idToken,
-      audience: this.config.get<string>('google.clientId'),
-    });
-    const payload = ticket.getPayload();
-    if (!payload?.sub || !payload.email) {
+    const payload = await this.verifyGoogleToken(idToken);
+    if (!payload.email || !payload.email_verified) {
       throw new UnauthorizedException('Invalid Google token');
     }
     return this.users.findOrCreateFromSocial(
@@ -128,21 +113,27 @@ export class AuthService {
     );
   }
 
-  async linkGoogle(userId: string, idToken: string) {
+  async linkGoogle(userId: string, idToken: string): Promise<MessageDto> {
+    const payload = await this.verifyGoogleToken(idToken);
+    await this.users.linkSocialIdentity(
+      userId,
+      AuthProvider.GOOGLE,
+      payload.sub,
+    );
+    return { message: 'Google account linked' };
+  }
+
+  private async verifyGoogleToken(idToken: string) {
     const ticket = await this.googleClient.verifyIdToken({
       idToken,
       audience: this.config.get<string>('google.clientId'),
     });
     const payload = ticket.getPayload();
     if (!payload?.sub) throw new UnauthorizedException('Invalid Google token');
-    return this.users.linkSocialIdentity(
-      userId,
-      AuthProvider.GOOGLE,
-      payload.sub,
-    );
+    return { ...payload, sub: payload.sub };
   }
 
-  async issueTokens(user: User): Promise<TokenPair> {
+  async issueTokens(user: User): Promise<TokenPairDto> {
     const accessToken = await this.jwt.signAsync(
       { sub: user.id, email: user.email },
       {
@@ -172,7 +163,7 @@ export class AuthService {
     };
   }
 
-  async refresh(refreshTokenRaw: string): Promise<TokenPair> {
+  async refresh(refreshTokenRaw: string): Promise<TokenPairDto> {
     const tokenHash = this.hashToken(refreshTokenRaw);
     const stored = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
@@ -181,10 +172,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    await this.prisma.refreshToken.update({
-      where: { id: stored.id },
+    const { count } = await this.prisma.refreshToken.updateMany({
+      where: { id: stored.id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    if (count === 0) throw new UnauthorizedException('Invalid refresh token');
 
     const user = await this.users.findById(stored.userId);
     if (!user) throw new UnauthorizedException('User not found');

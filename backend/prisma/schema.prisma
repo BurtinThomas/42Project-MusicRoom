@@ -34,7 +34,6 @@ enum FriendshipStatus {
 }
 
 enum AuthProvider {
-  LOCAL
   GOOGLE
 }
 
@@ -64,19 +63,18 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  identities                 SocialIdentity[]
-  devices                    Device[]
-  actionLogs                 ActionLog[]
-  ownedEvents                Event[]             @relation("EventOwner")
-  eventInvites               EventInvite[]
-  votes                      Vote[]
-  ownedPlaylists             Playlist[]          @relation("PlaylistOwner")
-  playlistInvites            PlaylistInvite[]
-  playlistTracksAdded        PlaylistTrack[]     @relation("PlaylistTrackAddedBy")
-  friendshipsFrom            Friendship[]        @relation("FriendshipRequester")
-  friendshipsTo              Friendship[]        @relation("FriendshipAddressee")
-  refreshTokens              RefreshToken[]
-  eventTracksAdded           EventTrack[]        @relation("EventTrackAddedBy")
+  identities          SocialIdentity[]
+  actionLogs          ActionLog[]
+  ownedEvents         Event[]          @relation("EventOwner")
+  eventInvites        EventInvite[]
+  votes               Vote[]
+  ownedPlaylists      Playlist[]       @relation("PlaylistOwner")
+  playlistInvites     PlaylistInvite[]
+  playlistTracksAdded PlaylistTrack[]  @relation("PlaylistTrackAddedBy")
+  friendshipsFrom     Friendship[]     @relation("FriendshipRequester")
+  friendshipsTo       Friendship[]     @relation("FriendshipAddressee")
+  refreshTokens       RefreshToken[]
+  eventTracksAdded    EventTrack[]     @relation("EventTrackAddedBy")
 }
 
 model SocialIdentity {
@@ -113,29 +111,12 @@ model Friendship {
   @@unique([requesterId, addresseeId])
 }
 
-model Device {
-  id             String            @id @default(uuid())
-  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId         String
-  installationId String
-  platform       ActionLogPlatform
-  model          String
-  appVersion     String
-  createdAt      DateTime          @default(now())
-  lastSeenAt     DateTime          @updatedAt
-
-  actionLogs ActionLog[]
-
-  @@unique([userId, installationId])
-}
-
 model ActionLog {
   id         String            @id @default(uuid())
   user       User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
   userId     String?
-  device     Device?           @relation(fields: [deviceId], references: [id], onDelete: SetNull)
-  deviceId   String?
   platform   ActionLogPlatform
+  device     String
   appVersion String
   action     String
   metadata   Json              @default("{}")
@@ -189,11 +170,9 @@ model EventInvite {
 }
 
 model Track {
-  id          String  @id @default(uuid())
-  title       String
-  artist      String
-  durationMs  Int?
-  externalRef String?
+  id     String @id @default(uuid())
+  title  String
+  artist String
 
   eventTracks    EventTrack[]
   playlistTracks PlaylistTrack[]
@@ -229,13 +208,12 @@ model Vote {
 }
 
 model Playlist {
-  id               String      @id @default(uuid())
-  owner            User        @relation("PlaylistOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  ownerId          String
-  name             String
-  visibility       Visibility  @default(PUBLIC)
-  editLicense      EditLicense @default(OPEN)
-  requiresPaidPlan Boolean     @default(false)
+  id          String      @id @default(uuid())
+  owner       User        @relation("PlaylistOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId     String
+  name        String
+  visibility  Visibility  @default(PUBLIC)
+  editLicense EditLicense @default(OPEN)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

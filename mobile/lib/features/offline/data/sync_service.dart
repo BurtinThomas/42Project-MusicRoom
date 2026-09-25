@@ -4,13 +4,9 @@ import '../../../core/network/api_client.dart';
 import '../../../core/storage/local_db.dart';
 
 class SyncOutcome {
-  SyncOutcome(
-      {required this.appliedCount,
-      required this.conflicts,
-      required this.errors});
+  SyncOutcome({required this.appliedCount, required this.rejected});
   final int appliedCount;
-  final List<String> conflicts;
-  final List<String> errors;
+  final List<String> rejected;
 }
 
 class SyncService {
@@ -18,11 +14,11 @@ class SyncService {
   final ApiClient _api;
   final LocalDb _db;
 
+  static const _snapshotKey = 'sync:snapshot';
+
   Future<SyncOutcome> pushOutbox() async {
     final pending = await _db.pendingActions();
-    if (pending.isEmpty) {
-      return SyncOutcome(appliedCount: 0, conflicts: [], errors: []);
-    }
+    if (pending.isEmpty) return SyncOutcome(appliedCount: 0, rejected: []);
 
     final response = await _api.raw.post('/sync/replay', data: {
       'actions': pending
@@ -35,8 +31,7 @@ class SyncService {
     });
 
     var applied = 0;
-    final conflicts = <String>[];
-    final errors = <String>[];
+    final rejected = <String>[];
 
     for (final result in (response.data as List)) {
       final id = result['id'] as String;
@@ -44,30 +39,31 @@ class SyncService {
       if (status == 'applied') {
         applied++;
         await _db.markActionStatus(id, 'applied');
-      } else if (status == 'conflict') {
-        conflicts.add(id);
-        await _db.markActionStatus(id, 'conflict',
-            error: jsonEncode(result['error']));
       } else {
-        errors.add(id);
-        await _db.markActionStatus(id, 'error',
-            error: jsonEncode(result['error']));
+        final error = result['error'];
+        final reason = error is Map ? error['message'] : error;
+        rejected.add('$reason');
+        await _db.markActionStatus(id, status, error: jsonEncode(error));
       }
     }
 
     await _db.clearAppliedActions();
-    return SyncOutcome(
-        appliedCount: applied, conflicts: conflicts, errors: errors);
+    return SyncOutcome(appliedCount: applied, rejected: rejected);
   }
 
   Future<void> pullSnapshot() async {
     final response = await _api.raw.get('/sync/snapshot');
-    await _db.putCache('sync:snapshot', jsonEncode(response.data));
+    await _db.putCache(_snapshotKey, jsonEncode(response.data));
   }
 
   Future<SyncOutcome> sync() async {
     final outcome = await pushOutbox();
     await pullSnapshot();
     return outcome;
+  }
+
+  static Future<Map<String, dynamic>?> cachedSnapshot(LocalDb db) async {
+    final raw = await db.getCache(_snapshotKey);
+    return raw == null ? null : jsonDecode(raw) as Map<String, dynamic>;
   }
 }

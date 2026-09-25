@@ -40,9 +40,22 @@ export class FriendshipsService {
     if (existing)
       throw new ConflictException('A friendship request already exists');
 
-    return this.prisma.friendship.create({
-      data: { requesterId, addresseeId },
+    const addressee = await this.prisma.user.findUnique({
+      where: { id: addresseeId },
+      select: { id: true },
     });
+    if (!addressee) throw new NotFoundException('User not found');
+
+    try {
+      return await this.prisma.friendship.create({
+        data: { requesterId, addresseeId },
+      });
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        throw new ConflictException('A friendship request already exists');
+      }
+      throw err;
+    }
   }
 
   async respond(userId: string, friendshipId: string, accept: boolean) {
@@ -62,9 +75,10 @@ export class FriendshipsService {
   }
 
   listFor(userId: string) {
+    const publicUser = { select: { id: true, displayName: true } };
     return this.prisma.friendship.findMany({
       where: { OR: [{ requesterId: userId }, { addresseeId: userId }] },
-      include: { requester: true, addressee: true },
+      include: { requester: publicUser, addressee: publicUser },
     });
   }
 }

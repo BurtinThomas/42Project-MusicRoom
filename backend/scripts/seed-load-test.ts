@@ -1,5 +1,3 @@
-
-
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
 
@@ -37,19 +35,22 @@ async function main() {
   const event = await prisma.event.create({
     data: { ownerId: owner.id, name: 'k6 Load Test Event' },
   });
-  const track = await prisma.track.create({ data: { title: 'Seed Track', artist: 'k6' } });
-  await prisma.eventTrack.create({ data: { eventId: event.id, trackId: track.id, addedById: owner.id } });
+  const track = await prisma.track.create({
+    data: { title: 'Seed Track', artist: 'k6' },
+  });
+  await prisma.eventTrack.create({
+    data: { eventId: event.id, trackId: track.id, addedById: owner.id },
+  });
 
   const playlist = await prisma.playlist.create({
-    data: { ownerId: owner.id, name: 'k6 Load Test Playlist', requiresPaidPlan: true },
+    data: { ownerId: owner.id, name: 'k6 Load Test Playlist' },
   });
-  await prisma.user.update({ where: { id: owner.id }, data: { subscriptionPlan: 'PAID' } });
 
   console.log('EVENT_ID=', event.id);
   console.log('PLAYLIST_ID=', playlist.id);
   console.log('Run k6 with:');
   console.log(
-    `  EVENT_ID=${event.id} PLAYLIST_ID=${playlist.id} POOL_SIZE=${POOL_SIZE} k6 run scripts/k6-scenario.js`,
+    `  make load-test EVENT_ID=${event.id} PLAYLIST_ID=${playlist.id} POOL_SIZE=${POOL_SIZE}`,
   );
 }
 

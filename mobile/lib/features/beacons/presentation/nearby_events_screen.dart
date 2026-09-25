@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_beacon/flutter_beacon.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../application/beacons_providers.dart';
@@ -10,8 +11,7 @@ class NearbyEventsScreen extends ConsumerStatefulWidget {
   const NearbyEventsScreen({super.key});
 
   @override
-  ConsumerState<NearbyEventsScreen> createState() =>
-      _NearbyEventsScreenState();
+  ConsumerState<NearbyEventsScreen> createState() => _NearbyEventsScreenState();
 }
 
 class _NearbyEventsScreenState extends ConsumerState<NearbyEventsScreen> {
@@ -112,7 +112,8 @@ class _NearbyEventsScreenState extends ConsumerState<NearbyEventsScreen> {
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              Text(_error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ],
             const SizedBox(height: 24),
             Expanded(
@@ -129,9 +130,12 @@ class _NearbyEventsScreenState extends ConsumerState<NearbyEventsScreen> {
                         return ListTile(
                           leading: const Icon(Icons.event_available),
                           title: Text(e.name),
-                          subtitle: e.currentTopTrackTitle != null
-                              ? Text('Now playing: ${e.currentTopTrackTitle}')
-                              : null,
+                          subtitle: Text(e.upNext.isEmpty
+                              ? 'No track in the queue yet'
+                              : 'Up next: ${e.upNext.map((t) => '${t.title} '
+                                  '(${t.artist})').join(', ')}'),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => context.push('/home/${e.eventId}'),
                         );
                       },
                     ),

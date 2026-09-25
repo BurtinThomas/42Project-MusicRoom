@@ -1,5 +1,3 @@
-
-
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Trend } from 'k6/metrics';
@@ -11,6 +9,8 @@ const PLAYLIST_ID = __ENV.PLAYLIST_ID;
 
 const voteTrend = new Trend('vote_duration');
 const playlistTrend = new Trend('playlist_add_duration');
+
+http.setResponseCallback(http.expectedStatuses({ min: 200, max: 299 }, 409));
 
 export const options = {
   scenarios: {
@@ -42,7 +42,10 @@ export function setup() {
   for (let i = 0; i < POOL_SIZE; i++) {
     const res = http.post(
       `${BASE_URL}/auth/login`,
-      JSON.stringify({ email: `loadtest${i}@musicroom.test`, password: 'password123' }),
+      JSON.stringify({
+        email: `loadtest${i}@musicroom.test`,
+        password: 'password123',
+      }),
       { headers: baseHeaders },
     );
     if (res.status === 201) {
@@ -56,7 +59,9 @@ export default function (data) {
   const token = data.tokens[__VU % data.tokens.length];
   const authHeaders = { ...baseHeaders, Authorization: `Bearer ${token}` };
 
-  const eventDetail = http.get(`${BASE_URL}/events/${EVENT_ID}`, { headers: authHeaders });
+  const eventDetail = http.get(`${BASE_URL}/events/${EVENT_ID}`, {
+    headers: authHeaders,
+  });
   check(eventDetail, { 'event detail 200': (r) => r.status === 200 });
   const queue = eventDetail.json('queue');
   if (queue && queue.length > 0) {
@@ -67,16 +72,23 @@ export default function (data) {
       { headers: authHeaders },
     );
     voteTrend.add(voteRes.timings.duration);
-    check(voteRes, { 'vote handled': (r) => [200, 201, 409].includes(r.status) });
+    check(voteRes, {
+      'vote handled': (r) => [200, 201, 409].includes(r.status),
+    });
   }
 
   const addRes = http.post(
     `${BASE_URL}/playlists/${PLAYLIST_ID}/tracks`,
-    JSON.stringify({ title: `Load test track ${__VU}-${__ITER}`, artist: 'k6' }),
+    JSON.stringify({
+      title: `Load test track ${__VU}-${__ITER}`,
+      artist: 'k6',
+    }),
     { headers: authHeaders },
   );
   playlistTrend.add(addRes.timings.duration);
-  check(addRes, { 'playlist add handled': (r) => [200, 201, 403].includes(r.status) });
+  check(addRes, {
+    'playlist add handled': (r) => r.status === 201,
+  });
 
   sleep(1);
 }
