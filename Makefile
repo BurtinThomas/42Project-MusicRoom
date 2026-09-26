@@ -16,7 +16,7 @@ endif
         db-up db-down db-reset prisma-generate prisma-migrate \
         backend-dev backend-build backend-lint \
         mobile-emulator mobile-web mobile-android \
-        load-test seed-load-test env flutter-sdk mobile-build-dir test
+        load-test env flutter-sdk mobile-build-dir test
 
 help:
 	@echo "Music Room — available targets:"
@@ -33,8 +33,7 @@ help:
 	@echo "  make mobile-emulator  Boot the Android emulator (first AVD found; override AVD_NAME, ANDROID_SDK, AVD_HOME)"
 	@echo "  make mobile-web       Run the Flutter app in Chrome on a fixed port (matches CORS_ORIGINS)"
 	@echo "  make mobile-android   Run the Flutter app on the running Android emulator"
-	@echo "  make seed-load-test   Seed accounts/event/playlist for a k6 run"
-	@echo "  make load-test        Run the k6 load-testing scenario"
+	@echo "  make load-test        Seed data, start the API, run the k6 load test, stop the API"
 
 install: backend-install mobile-install
 
@@ -98,12 +97,23 @@ mobile-android: $(FLUTTER) mobile-build-dir
 
 POOL_SIZE ?= 250
 BASE_URL  ?= http://localhost:3000
+API_LOG   := backend/load-test-api.log
 
-seed-load-test:
-	cd backend && POOL_SIZE=$(POOL_SIZE) npx ts-node scripts/seed-load-test.ts
-
-load-test:
-	@[ -n "$(EVENT_ID)" ] && [ -n "$(PLAYLIST_ID)" ] || { echo "Run make seed-load-test first, then pass EVENT_ID=... PLAYLIST_ID=..."; exit 1; }
+load-test: env db-up backend-build
+	@! curl -s -o /dev/null $(BASE_URL) || { echo "$(BASE_URL) is already in use: stop the running API first"; exit 1; }
+	@set -e; \
+	ids=$$(cd backend && POOL_SIZE=$(POOL_SIZE) npx ts-node scripts/seed-load-test.ts); \
+	echo "$$ids"; \
+	event_id=$$(echo "$$ids" | sed -n 's/^EVENT_ID=//p'); \
+	playlist_id=$$(echo "$$ids" | sed -n 's/^PLAYLIST_ID=//p'); \
+	(cd backend && THROTTLE_GLOBAL_LIMIT=100000000 THROTTLE_AUTH_LIMIT=100000000 exec node dist/main) > $(API_LOG) 2>&1 & \
+	api=$$!; \
+	trap 'kill $$api 2>/dev/null' EXIT; \
+	until curl -s -o /dev/null $(BASE_URL); do \
+		kill -0 $$api 2>/dev/null || { echo "API failed to start:"; tail -20 $(API_LOG); exit 1; }; \
+		sleep 1; \
+	done; \
+	echo "API up (logs: $(API_LOG)), starting k6..."; \
 	docker run --rm --network host -v "$(CURDIR)/backend/scripts:/scripts:Z" docker.io/grafana/k6 run \
-		-e BASE_URL=$(BASE_URL) -e EVENT_ID=$(EVENT_ID) -e PLAYLIST_ID=$(PLAYLIST_ID) -e POOL_SIZE=$(POOL_SIZE) \
+		-e BASE_URL=$(BASE_URL) -e EVENT_ID=$$event_id -e PLAYLIST_ID=$$playlist_id -e POOL_SIZE=$(POOL_SIZE) \
 		/scripts/k6-scenario.js

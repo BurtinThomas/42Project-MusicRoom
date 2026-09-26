@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
 
+process.loadEnvFile();
+
 const POOL_SIZE = parseInt(process.env.POOL_SIZE || '200', 10);
 const prisma = new PrismaClient();
 
@@ -46,12 +48,8 @@ async function main() {
     data: { ownerId: owner.id, name: 'k6 Load Test Playlist' },
   });
 
-  console.log('EVENT_ID=', event.id);
-  console.log('PLAYLIST_ID=', playlist.id);
-  console.log('Run k6 with:');
-  console.log(
-    `  make load-test EVENT_ID=${event.id} PLAYLIST_ID=${playlist.id} POOL_SIZE=${POOL_SIZE}`,
-  );
+  console.log(`EVENT_ID=${event.id}`);
+  console.log(`PLAYLIST_ID=${playlist.id}`);
 }
 
 main().finally(() => prisma.$disconnect());
